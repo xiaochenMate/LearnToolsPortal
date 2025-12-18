@@ -78,16 +78,16 @@ const App: React.FC = () => {
             <div className="absolute h-full bg-cyan-500 animate-[loading_1.8s_ease-in-out_infinite]" style={{ width: '40%' }}></div>
           </div>
           <p className="mt-6 text-cyan-500/60 font-mono text-xs tracking-[0.3em] uppercase animate-pulse">
-            >> Mount Module: {bootingAppTitle}...
+            &gt;&gt; Mount Module: {bootingAppTitle}...
           </p>
         </div>
 
         {/* 底部终端日志 */}
         <div className="absolute bottom-12 left-12 font-mono text-[10px] text-slate-600 space-y-1 hidden md:block">
-          <p>> CHECKING NEURAL LINKS... [OK]</p>
-          <p>> SYNCHRONIZING CORE DATABASE... [98%]</p>
-          <p>> BYPASSING FIREWALL... [DONE]</p>
-          <p>> INITIALIZING 3D RENDER ENGINE... [READY]</p>
+          <p>&gt; CHECKING NEURAL LINKS... [OK]</p>
+          <p>&gt; SYNCHRONIZING CORE DATABASE... [98%]</p>
+          <p>&gt; BYPASSING FIREWALL... [DONE]</p>
+          <p>&gt; INITIALIZING 3D RENDER ENGINE... [READY]</p>
         </div>
       </div>
 
