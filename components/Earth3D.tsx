@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Moon as MoonIcon, Sun, RotateCw, Telescope, Layers, Sparkles, Move, Radio, Compass, MapPin, Activity, Target, ChevronRight } from 'lucide-react';
+import { X, RotateCw, Globe, ChevronRight, ChevronLeft, Move, Sun as SunIcon, Database, Crosshair, BarChart3, Radio, Scan, ChevronDown, ChevronUp, Cpu } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -12,421 +12,410 @@ interface Earth3DProps {
   onClose: () => void;
 }
 
-const SCALES = {
-  SURFACE: { id: 0, label: '星球表面', limit: 1.3 },
-  PLANET: { id: 1, label: '轨道视角', limit: 8 },
-  SOLAR: { id: 2, label: '太阳系', limit: 250 },
-  GALAXY: { id: 3, label: '银河深空', limit: 1500 },
-  UNIVERSE: { id: 4, label: '已知宇宙', limit: Infinity }
-};
-
-const CITY_MARKERS = [
-  { name: '北京', lat: 39.9042, lon: 116.4074, pop: 21.5, desc: '千年古都，中国的政治、文化、国际交往中心。拥有长城、故宫等历史古迹。' },
-  { name: '伦敦', lat: 51.5074, lon: -0.1278, pop: 8.9, desc: '大不列颠及北爱尔兰联合王国首都，世界顶级金融与文化枢纽。' },
-  { name: '纽约', lat: 40.7128, lon: -74.0060, pop: 8.4, desc: '大苹果城，美国最大城市，全球经济枢纽。' },
-  { name: '东京', lat: 35.6762, lon: 139.6503, pop: 14.0, desc: '全球人口最密集的都市圈，赛博霓虹之城的代表。' }
-];
-
-const PLANETS_INFO: Record<string, any> = {
-  Mercury: { name: '水星', type: '岩质行星', radius: '2,439 km', extra: '温差最大', desc: '最靠近太阳的行星，表面布满了类似月球的环形山。', color: '#A5A5A5' },
-  Venus: { name: '金星', type: '岩质行星', radius: '6,051 km', extra: '极端温室效应', desc: '太阳系中最热的行星，浓厚的大气层锁住了所有热量。', color: '#E3BB76' },
-  Mars: { name: '火星', type: '岩质行星', radius: '3,389 km', extra: '红色星球', desc: '拥有太阳系最高的山脉奥林匹斯山，是人类未来的移民目标。', color: '#E27B58' },
-  Jupiter: { name: '木星', type: '气态巨行星', radius: '69,911 km', extra: '行星之王', desc: '太阳系最大的行星，著名的大红斑是一个持续了数百年的风暴。', color: '#D39C7E' },
-  Saturn: { name: '土星', type: '气态巨行星', radius: '58,232 km', extra: '壮丽光环', desc: '拥有最显著的行星环系统，主要由冰晶和尘埃组成。', color: '#C5AB6E' },
-  Uranus: { name: '天王星', type: '冰巨星', radius: '25,362 km', extra: '侧向自转', desc: '大气中含有甲烷，使其呈现迷人的淡蓝色，且自转轴几乎与轨道面平行。', color: '#B5E3E3' },
-  Neptune: { name: '海王星', type: '冰巨星', radius: '24,622 km', extra: '超音速强风', desc: '离太阳最远的行星，拥有太阳系中最猛烈的风暴。', color: '#4B70DD' }
-};
-
-const MOON_INFO = {
-  name: '月球',
-  type: '天然卫星',
-  desc: '地球唯一的天然卫星，由于潮汐锁定，月球始终以同一面面向地球。',
-  radius: '1,737 km',
-  distance: '38.4万 km'
+const PLANETS_DATA: Record<string, any> = {
+  Galaxy: { name: '银河系', type: '星系', tex: 'starmap', size: 3000, dist: 0, speed: 0.00001, color: '#A5B4FC', isGalaxy: true },
+  Sun: { name: '太阳', type: '恒星', desc: '太阳系核心，一颗黄矮星，其质量占整个系统的 99.86%。', tex: 'sun', size: 50, dist: 0, speed: 0, color: '#FFD700', status: '核聚变反应', isSun: true },
+  Mercury: { name: '水星', type: '岩质', desc: '最靠近太阳的行星，大气层极其稀薄，昼夜温差悬殊。', tex: 'mercury', size: 4, dist: 100, speed: 0.008, color: '#9CA3AF', status: '地壳稳定' },
+  Venus: { name: '金星', type: '岩质', desc: '太阳系中最热的行星，拥有极厚的高浓度硫酸大气层。', tex: 'venus_surface', size: 6.5, dist: 150, speed: 0.006, color: '#FCD34D', status: '极度高温' },
+  Earth: { name: '地球', type: '生命', desc: '目前已知唯一存在生命的行星，拥有适宜的温度和充足的水分。', tex: 'earth_atmos_2048', size: 7.5, dist: 220, speed: 0.004, color: '#38BDF8', status: '生态活跃', hasAtmos: true },
+  Moon: { name: '月球', type: '卫星', desc: '地球唯一的天然卫星，对地球的潮汐和自转轴稳定性起着关键作用。', tex: 'moon', size: 2, dist: 18, speed: 0.015, color: '#CBD5E1', isMoon: true, parent: '地球' },
+  Mars: { name: '火星', type: '岩质', desc: '著名的红色星球，拥有稀薄的大气和太阳系最高的山峰。', tex: 'mars', size: 5.8, dist: 310, speed: 0.0035, color: '#FB7185', status: '局部沙尘暴' },
+  Jupiter: { name: '木星', type: '气态', desc: '太阳系中体积最大的行星，它是一个巨大的气态巨行星。', tex: 'jupiter', size: 20, dist: 460, speed: 0.002, color: '#FDBA74', status: '强磁场环境' },
+  Saturn: { name: '土星', type: '气态', desc: '以极其显著和壮丽的行星环系统而闻名于世。', tex: 'saturn', size: 17, dist: 640, speed: 0.0015, hasRing: true, color: '#FDE047', status: '环系波动' },
+  Uranus: { name: '天王星', type: '冰巨', desc: '侧向自转的冰巨星，其自转轴几乎与公转轨道平面平行。', tex: 'uranus', size: 11, dist: 820, speed: 0.001, color: '#7DD3FC', status: '极度低温' },
+  Neptune: { name: '海王星', type: '冰巨', desc: '离太阳最远的行星，其大气层中有剧烈风暴。', tex: 'neptune', size: 11, dist: 980, speed: 0.0008, color: '#6366F1', status: '超音速风' }
 };
 
 const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<any>(null);
-  const requestRef = useRef<number>(0);
-  
-  const [zoomLevel, setZoomLevel] = useState(3.5); 
-  const [activeScale, setActiveScale] = useState(SCALES.PLANET.id);
-  const [autoRotate, setAutoRotate] = useState(true);
-  const [selectedTarget, setSelectedTarget] = useState<any>(null);
+  const initialized = useRef(false);
+  const [selectedName, setSelectedName] = useState<string | null>('地球');
+  const [isPanelVisible, setIsPanelVisible] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isAutoRotating, setIsAutoRotating] = useState(true);
 
-  const groupsRef = useRef<{
-    universe: any,
-    nebula: any,
-    solar: any,
-    earth: any,
-    moon: any,
-    moonOrbit: any,
-    stars: any,
-    labels: any,
-    selectionRing: any,
-    planets: any[],
-    orbitalPaths: any
-  }>({ universe: null, nebula: null, solar: null, earth: null, moon: null, moonOrbit: null, stars: null, labels: null, selectionRing: null, planets: [], orbitalPaths: null });
+  const engine = useRef({
+    scene: null as any,
+    camera: null as any,
+    renderer: null as any,
+    planets: new Map<string, any>(),
+    raycaster: null as any,
+    mouse: null as any,
+    targetName: '地球' as string | null,
+    isAutoRotating: true,
+    maxAnisotropy: 1,
+    vec_targetPos: null as any,
+    vec_camPos: null as any,
+    controls: {
+      theta: 0, phi: Math.PI / 2.5,
+      radius: 200, targetRadius: 200,
+      isDragging: false,
+      lastX: 0, lastY: 0
+    }
+  });
+
+  // 1. 去掉蓝框和虚线：纯发光文字标签
+  const createLabelTexture = (name: string, color: string) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 128;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, 512, 128);
+    
+    ctx.font = `900 72px "Orbitron", "Inter", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // 发光扩散层
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = color;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(name.toUpperCase(), 256, 64);
+    
+    // 文字本体层
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(name.toUpperCase(), 256, 64);
+
+    const tex = new window.THREE.CanvasTexture(canvas);
+    tex.anisotropy = engine.current.maxAnisotropy;
+    return tex;
+  };
+
+  const createSunTexture = (color: string, opacity = 1) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    const grad = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.1, '#fffceb');
+    grad.addColorStop(0.3, color);
+    grad.addColorStop(0.6, 'rgba(255, 100, 0, 0.2)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = opacity;
+    ctx.fillRect(0, 0, 512, 512);
+    return new window.THREE.CanvasTexture(canvas);
+  };
 
   useEffect(() => {
-    if (!window.THREE || !containerRef.current) return;
+    if (initialized.current || !window.THREE || !containerRef.current) return;
+    initialized.current = true;
+
     const THREE = window.THREE;
-
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 100000);
-    camera.position.z = 3.5;
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
+    scene.background = new THREE.Color(0x000000); // 绝对黑色
+    
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, stencil: false });
+    engine.current.maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
     containerRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
+
+    engine.current.scene = scene;
+    engine.current.camera = camera;
+    engine.current.renderer = renderer;
+    engine.current.raycaster = new THREE.Raycaster();
+    engine.current.mouse = new THREE.Vector2();
+    engine.current.vec_targetPos = new THREE.Vector3();
+    engine.current.vec_camPos = new THREE.Vector3();
 
     const textureLoader = new THREE.TextureLoader();
 
-    // 1. 宇宙背景
-    const universeGroup = new THREE.Group();
-    scene.add(universeGroup);
-    groupsRef.current.universe = universeGroup;
-    const universeMat = new THREE.MeshBasicMaterial({
-      map: textureLoader.load('https://threejs.org/examples/textures/planets/galaxy.png'),
-      side: THREE.BackSide, transparent: true, opacity: 0.4, color: 0x555588
-    });
-    universeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(40000, 32, 32), universeMat));
+    // 背景星空粒子
+    const createStars = (count: number, size: number, color: number, range: number) => {
+        const geo = new THREE.BufferGeometry();
+        const pos = [];
+        for (let i = 0; i < count; i++) {
+            const r = range * (0.8 + Math.random() * 0.4);
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            pos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+        }
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        return new THREE.Points(geo, new THREE.PointsMaterial({ size, color, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending }));
+    };
+    scene.add(createStars(40000, 1.2, 0xffffff, 8000000));
+    scene.add(createStars(8000, 4.0, 0x88ccff, 5000000));
 
-    // 2. 星云与恒星
-    const starsGroup = new THREE.Group();
-    scene.add(starsGroup);
-    groupsRef.current.stars = starsGroup;
-    const starGeo = new THREE.BufferGeometry();
-    const positions = [];
-    for (let i = 0; i < 20000; i++) {
-      positions.push(THREE.MathUtils.randFloatSpread(20000), THREE.MathUtils.randFloatSpread(20000), THREE.MathUtils.randFloatSpread(20000));
-    }
-    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    starsGroup.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 1.2, color: 0xffffff, transparent: true, opacity: 0.8 })));
+    // 光照：高对比度
+    scene.add(new THREE.AmbientLight(0xffffff, 0.01)); 
+    const sunLight = new THREE.PointLight(0xffffff, 6, 400000);
+    scene.add(sunLight);
 
-    // 3. 太阳
-    const solarGroup = new THREE.Group();
-    scene.add(solarGroup);
-    groupsRef.current.solar = solarGroup;
-    const sun = new THREE.Group();
-    sun.position.set(-1500, 500, -2000);
-    solarGroup.add(sun);
-    sun.add(new THREE.Mesh(new THREE.SphereGeometry(50, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffffff })));
+    // 行星生成
+    Object.keys(PLANETS_DATA).forEach(key => {
+      const data = PLANETS_DATA[key];
+      if (data.isGalaxy || data.isMoon) return;
 
-    // 4. 地球
-    const earthGroup = new THREE.Group();
-    scene.add(earthGroup);
-    groupsRef.current.earth = earthGroup;
-    const earthMat = new THREE.MeshPhongMaterial({
-      map: textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'),
-      bumpMap: textureLoader.load('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg'),
-      bumpScale: 0.02,
-      specularMap: textureLoader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg'),
-      emissiveMap: textureLoader.load('https://threejs.org/examples/textures/planets/earth_lights_2048.png'),
-      emissive: new THREE.Color(0xffffff), emissiveIntensity: 0.8, shininess: 10
-    });
-    earthGroup.add(new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), earthMat));
-    earthGroup.add(new THREE.Mesh(new THREE.SphereGeometry(1.03, 128, 128), new THREE.MeshBasicMaterial({ color: 0x3388ff, transparent: true, opacity: 0.2, side: THREE.BackSide, blending: THREE.AdditiveBlending })));
-
-    // 5. 城市标记
-    const labelGroup = new THREE.Group();
-    groupsRef.current.labels = labelGroup;
-    earthGroup.add(labelGroup);
-    CITY_MARKERS.forEach(city => {
-      const phi = (90 - city.lat) * (Math.PI / 180);
-      const theta = (city.lon + 180) * (Math.PI / 180);
-      const pos = new THREE.Vector3(-(Math.sin(phi) * Math.cos(theta)), Math.cos(phi), Math.sin(phi) * Math.sin(theta));
-      const cityContainer = new THREE.Group();
-      cityContainer.position.copy(pos);
-      cityContainer.lookAt(0,0,0);
-      cityContainer.userData = { isCity: true, ...city, pos };
-      labelGroup.add(cityContainer);
-      cityContainer.add(new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 })));
-    });
-
-    // 6. 轨道线组
-    const orbitalPaths = new THREE.Group();
-    scene.add(orbitalPaths);
-    groupsRef.current.orbitalPaths = orbitalPaths;
-
-    // 7. 太阳系行星系统
-    const planetsList = [
-      { key: 'Mercury', dist: 30, size: 0.38, speed: 0.008, tex: 'mercury' },
-      { key: 'Venus', dist: 50, size: 0.95, speed: 0.005, tex: 'venus' },
-      { key: 'Mars', dist: 90, size: 0.53, speed: 0.003, tex: 'mars' },
-      { key: 'Jupiter', dist: 150, size: 3.5, speed: 0.001, tex: 'jupiter' },
-      { key: 'Saturn', dist: 220, size: 3.0, speed: 0.0007, tex: 'saturn', hasRing: true },
-      { key: 'Uranus', dist: 300, size: 1.5, speed: 0.0004, tex: 'uranus' },
-      { key: 'Neptune', dist: 380, size: 1.45, speed: 0.0002, tex: 'neptune' }
-    ];
-
-    planetsList.forEach(p => {
-      // 轨道圆环
-      const curve = new THREE.EllipseCurve(0, 0, p.dist, p.dist, 0, 2 * Math.PI, false, 0);
-      const points = curve.getPoints(128);
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const material = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.1 });
-      const orbitLine = new THREE.LineLoop(geometry, material);
-      orbitLine.rotation.x = Math.PI / 2;
-      orbitalPaths.add(orbitLine);
-
-      // 行星公转组
-      const orbit = new THREE.Group();
-      scene.add(orbit);
-      const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(p.size, 64, 64),
-        new THREE.MeshPhongMaterial({ map: textureLoader.load(`https://threejs.org/examples/textures/planets/${p.tex === 'venus' ? 'venus_atmosphere' : p.tex === 'uranus' ? 'uranus' : p.tex}.jpg`) })
-      );
-      mesh.position.set(p.dist, 0, 0);
-      mesh.userData = { isPlanet: true, ...PLANETS_INFO[p.key] };
-      orbit.add(mesh);
+      const pivot = new THREE.Group();
+      scene.add(pivot);
       
-      // 全息追踪标签
-      const canvas = document.createElement('canvas');
-      canvas.width = 256; canvas.height = 64;
-      const ctx = canvas.getContext('2d')!;
-      ctx.font = 'Bold 32px "Orbitron", sans-serif';
-      ctx.fillStyle = '#00ffff';
-      ctx.textAlign = 'center';
-      ctx.fillText(PLANETS_INFO[p.key].name, 128, 45);
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, opacity: 0.8 }));
-      sprite.scale.set(p.size * 5 + 2, p.size * 1.5 + 0.6, 1);
-      sprite.position.set(0, p.size + 2, 0);
-      mesh.add(sprite);
+      const mat = data.isSun 
+        ? new THREE.MeshBasicMaterial({ color: 0xffffff }) 
+        : new THREE.MeshStandardMaterial({ 
+            color: new THREE.Color(data.color), 
+            roughness: 0.95, 
+            metalness: 0,
+          });
+      
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(data.size, 64, 64), mat);
+      mesh.position.set(data.dist, 0, 0);
+      mesh.userData = { name: data.name };
+      pivot.add(mesh);
 
-      if (p.hasRing) {
-        const ringGeo = new THREE.RingGeometry(p.size * 1.4, p.size * 2.2, 64);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0x888877, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+      textureLoader.load(`https://threejs.org/examples/textures/planets/${data.tex}.jpg`, (t: any) => {
+        t.encoding = THREE.sRGBEncoding;
+        t.anisotropy = engine.current.maxAnisotropy;
+        mat.map = t;
+        mat.needsUpdate = true;
+      });
+
+      if (data.isSun) {
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: createSunTexture('#ffcc00', 0.8), blending: THREE.AdditiveBlending }));
+        glow.scale.set(data.size * 6, data.size * 6, 1);
+        mesh.add(glow);
+      }
+
+      if (data.hasAtmos) {
+        const atmos = new THREE.Mesh(
+          new THREE.SphereGeometry(data.size * 1.04, 64, 64),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.1, side: THREE.BackSide })
+        );
+        mesh.add(atmos);
+      }
+
+      if (data.hasRing) {
+        const ringGeo = new THREE.RingGeometry(data.size * 1.6, data.size * 2.8, 128);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x887766, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
         const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.rotation.x = Math.PI / 2;
+        ring.rotation.x = Math.PI / 2.3;
         mesh.add(ring);
       }
 
-      groupsRef.current.planets.push({ orbit, mesh, speed: p.speed, key: p.key });
+      const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: createLabelTexture(data.name, data.color), transparent: true, depthTest: false }));
+      label.scale.set(data.size * 4.5, data.size * 1.1, 1);
+      label.position.set(0, data.size * 1.8, 0);
+      mesh.add(label);
+
+      if (!data.isSun) {
+        const orbit = new THREE.LineLoop(
+          new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0, 0, data.dist, data.dist).getPoints(500)),
+          new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.02 })
+        );
+        orbit.rotation.x = Math.PI / 2;
+        scene.add(orbit);
+      }
+      engine.current.planets.set(data.name, { pivot, mesh, data });
     });
 
-    // 8. 月球
-    const moonOrbitGroup = new THREE.Group();
-    scene.add(moonOrbitGroup);
-    groupsRef.current.moonOrbit = moonOrbitGroup;
-    const moon = new THREE.Mesh(
-      new THREE.SphereGeometry(0.27, 64, 64),
-      new THREE.MeshPhongMaterial({ map: textureLoader.load('https://threejs.org/examples/textures/planets/moon_1024.jpg') })
-    );
-    moon.position.set(5, 0, 0);
-    moon.userData = { isMoon: true, ...MOON_INFO };
-    moonOrbitGroup.add(moon);
-    groupsRef.current.moon = moon;
+    // 卫星：月球
+    const earthObj = engine.current.planets.get('地球');
+    if (earthObj) {
+      const moonData = PLANETS_DATA.Moon;
+      const moonPivot = new THREE.Group();
+      earthObj.mesh.add(moonPivot); 
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    sunLight.position.copy(sun.position).normalize().multiplyScalar(10);
-    scene.add(sunLight);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+      const moonMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 1 });
+      const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(moonData.size, 32, 32), moonMat);
+      moonMesh.position.set(moonData.dist, 0, 0);
+      moonMesh.userData = { name: moonData.name };
+      moonPivot.add(moonMesh);
 
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    let isDragging = false;
-    let prevMouse = { x: 0, y: 0 };
+      textureLoader.load('https://threejs.org/examples/textures/planets/moon.jpg', (t: any) => {
+        moonMat.map = t; moonMat.needsUpdate = true;
+      });
 
-    const onMouseDown = (e: MouseEvent) => {
-      isDragging = true;
-      prevMouse = { x: e.clientX, y: e.clientY };
-      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-      raycaster.setFromCamera(mouse, camera);
-      const targets = [
-        ...labelGroup.children, 
-        groupsRef.current.moon, 
-        ...groupsRef.current.planets.map(p => p.mesh)
-      ];
-      const intersects = raycaster.intersectObjects(targets, true);
-      if (intersects.length > 0) {
-        let t = intersects[0].object;
-        while(t.parent && !t.userData.name) t = t.parent;
-        setSelectedTarget(t.userData);
-      } else setSelectedTarget(null);
+      const moonLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: createLabelTexture(moonData.name, '#ffffff'), transparent: true, depthTest: false }));
+      moonLabel.scale.set(moonData.size * 8, moonData.size * 2, 1);
+      moonLabel.position.set(0, moonData.size * 2.5, 0);
+      moonMesh.add(moonLabel);
+      engine.current.planets.set(moonData.name, { pivot: moonPivot, mesh: moonMesh, data: moonData });
+    }
+
+    const handlePointerDown = (e: any) => {
+      if (e.target.closest('button') || e.target.closest('.pointer-events-auto')) return;
+      engine.current.controls.isDragging = true;
+      const x = e.clientX || e.touches?.[0].clientX;
+      const y = e.clientY || e.touches?.[0].clientY;
+      engine.current.controls.lastX = x; engine.current.controls.lastY = y;
+      
+      const mouseX = (x / window.innerWidth) * 2 - 1;
+      const mouseY = -(y / window.innerHeight) * 2 + 1;
+      engine.current.raycaster.setFromCamera({ x: mouseX, y: mouseY }, engine.current.camera);
+      const hits = engine.current.raycaster.intersectObjects(scene.children, true);
+      const hit = hits.find((h: any) => h.object.userData.name);
+      if (hit) handleSelect(hit.object.userData.name);
     };
 
-    renderer.domElement.addEventListener('mousedown', onMouseDown);
-    renderer.domElement.addEventListener('wheel', (e: WheelEvent) => {
-      camera.position.z = Math.max(1.05, Math.min(camera.position.z + e.deltaY * camera.position.z * 0.001, 50000));
-      setZoomLevel(camera.position.z);
-    }, { passive: true });
-    window.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      earthGroup.rotation.y += (e.clientX - prevMouse.x) * 0.004;
-      earthGroup.rotation.x += (e.clientY - prevMouse.y) * 0.004;
-      prevMouse = { x: e.clientX, y: e.clientY };
-      setAutoRotate(false);
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth, h = window.innerHeight;
+      camera.aspect = w / h; camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
     });
-    window.addEventListener('mouseup', () => isDragging = false);
+    containerRef.current?.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('mousemove', (e) => {
+      if (!engine.current.controls.isDragging) return;
+      engine.current.controls.theta -= (e.clientX - engine.current.controls.lastX) * 0.005;
+      engine.current.controls.phi = Math.max(0.1, Math.min(Math.PI - 0.1, engine.current.controls.phi - (e.clientY - engine.current.controls.lastY) * 0.005));
+      engine.current.controls.lastX = e.clientX; engine.current.controls.lastY = e.clientY;
+    });
+    window.addEventListener('mouseup', () => engine.current.controls.isDragging = false);
+    containerRef.current?.addEventListener('wheel', (e) => {
+      const step = engine.current.controls.targetRadius * 0.15;
+      engine.current.controls.targetRadius = Math.max(5, Math.min(2000000, engine.current.controls.targetRadius + (e.deltaY > 0 ? step : -step)));
+    }, { passive: false });
 
     const animate = () => {
-      const z = camera.position.z;
-      if (autoRotate && !isDragging) earthGroup.rotation.y += 0.0012;
-      groupsRef.current.moonOrbit.rotation.y += 0.002;
-      groupsRef.current.planets.forEach(p => {
-        p.orbit.rotation.y += p.speed;
-        p.mesh.rotation.y += 0.01;
-      });
-      groupsRef.current.universe.rotation.y += 0.00004;
-      groupsRef.current.stars.rotation.y += 0.00008;
-
-      if (z < SCALES.SURFACE.limit) setActiveScale(SCALES.SURFACE.id);
-      else if (z < SCALES.PLANET.limit) setActiveScale(SCALES.PLANET.id);
-      else if (z < SCALES.SOLAR.limit) setActiveScale(SCALES.SOLAR.id);
-      else if (z < SCALES.GALAXY.limit) setActiveScale(SCALES.GALAXY.id);
-      else setActiveScale(SCALES.UNIVERSE.id);
-
-      groupsRef.current.labels.visible = z < 4.5;
-      groupsRef.current.moonOrbit.visible = z < 100;
-      groupsRef.current.orbitalPaths.visible = z > 15;
-      groupsRef.current.planets.forEach(p => {
-        p.orbit.visible = z > 10;
-        // 远距离标签大小补偿，确保能被发现
-        const sprite = p.mesh.children.find((c: any) => c.isSprite);
-        if (sprite) {
-           const distToCam = camera.position.distanceTo(p.mesh.getWorldPosition(new THREE.Vector3()));
-           const scaleFactor = Math.max(1, distToCam / 200);
-           sprite.scale.set((p.size * 5 + 2) * scaleFactor, (p.size * 1.5 + 0.6) * scaleFactor, 1);
-        }
+      const { camera, renderer, scene, planets, targetName, controls, isAutoRotating, vec_targetPos } = engine.current;
+      
+      planets.forEach(p => { 
+        // 行星公转 (Revolution around the Sun)
+        p.pivot.rotation.y += p.data.speed; 
+        
+        // 行星自转 (Self-rotation on Y-axis)
+        // 为地球设置一个稍快但平滑的自转速度，增强动感
+        const rotationSpeed = p.data.name === '地球' ? 0.005 : 0.0015;
+        p.mesh.rotation.y += rotationSpeed; 
       });
 
+      if (isAutoRotating && !controls.isDragging) controls.theta += 0.0006;
+
+      vec_targetPos.set(0, 0, 0);
+      if (targetName && planets.has(targetName)) {
+        planets.get(targetName).mesh.getWorldPosition(vec_targetPos);
+      }
+
+      controls.radius = THREE.MathUtils.lerp(controls.radius, controls.targetRadius, 0.08);
+      const camX = vec_targetPos.x + controls.radius * Math.sin(controls.phi) * Math.cos(controls.theta);
+      const camY = vec_targetPos.y + controls.radius * Math.cos(controls.phi);
+      const camZ = vec_targetPos.z + controls.radius * Math.sin(controls.phi) * Math.sin(controls.theta);
+      camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 0.1);
+      camera.lookAt(vec_targetPos);
       renderer.render(scene, camera);
-      requestRef.current = requestAnimationFrame(animate);
+      requestAnimationFrame(animate);
     };
     animate();
-
-    return () => {
-      cancelAnimationFrame(requestRef.current);
-      if (rendererRef.current && containerRef.current) containerRef.current.removeChild(rendererRef.current.domElement);
-    };
   }, []);
 
+  const handleSelect = (name: string | null) => {
+    setSelectedName(name);
+    if (name) setIsPanelVisible(true);
+    engine.current.targetName = name;
+    if (name) {
+      const p = Object.values(PLANETS_DATA).find(x => x.name === name);
+      engine.current.controls.targetRadius = p ? p.size * 4 : 500;
+    } else {
+      engine.current.controls.targetRadius = 5000;
+    }
+  };
+
+  const current = Object.values(PLANETS_DATA).find(p => p.name === selectedName);
+
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-[#000105] z-50 overflow-hidden select-none cursor-crosshair">
+    <div ref={containerRef} className="fixed inset-0 bg-black z-50 overflow-hidden cursor-grab active:cursor-grabbing font-orbitron text-white">
       
-      {/* 行星感应器列表 - 左侧悬浮面板 */}
-      <div className="absolute left-10 top-1/2 -translate-y-1/2 flex flex-col gap-3 pointer-events-auto z-20">
-        <h3 className="text-cyan-500 font-bold tech-font text-xs uppercase tracking-[0.3em] mb-4 bg-cyan-500/10 px-4 py-2 border-l-2 border-cyan-500">Planetary Sensors</h3>
-        {Object.entries(PLANETS_INFO).map(([key, info]) => (
-          <button
-            key={key}
-            onClick={() => setSelectedTarget(info)}
-            className={`flex items-center gap-4 px-5 py-3 rounded-r-full border-l-4 transition-all group ${
-              selectedTarget?.name === info.name 
-              ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-[0_0_30px_rgba(6,182,212,0.2)]' 
-              : 'bg-black/40 border-white/10 text-slate-500 hover:border-cyan-500/50 hover:bg-black/60'
-            }`}
-          >
-            <div className={`w-3 h-3 rounded-full transition-transform duration-500 ${selectedTarget?.name === info.name ? 'bg-cyan-400 scale-125 shadow-[0_0_10px_cyan]' : 'bg-slate-700 group-hover:bg-cyan-800'}`}></div>
-            <div className="flex flex-col items-start">
-              <span className="text-sm font-black tech-font uppercase tracking-widest">{info.name}</span>
-              <span className="text-[9px] font-mono text-cyan-400/50">{info.type}</span>
+      {/* 顶部 HUD 装饰 */}
+      <div className="absolute top-0 left-0 w-full p-8 flex justify-between items-start pointer-events-none z-[60]">
+        <div className="bg-black/20 backdrop-blur-xl px-8 py-4 border border-white/5 rounded-3xl pointer-events-auto shadow-2xl">
+            <div className="flex items-center gap-5">
+              <Cpu className="text-cyan-400 w-6 h-6 animate-pulse" />
+              <div>
+                <h1 className="text-sm font-black tracking-[0.4em] uppercase text-white/90">DEEP SPACE TELEMETRY</h1>
+                <span className="text-[7px] text-cyan-500 font-bold uppercase tracking-[0.6em] block mt-1">Status: Online / Link-ID: {Math.random().toString(16).slice(2,8).toUpperCase()}</span>
+              </div>
             </div>
-            <ChevronRight className={`w-4 h-4 ml-2 transition-transform ${selectedTarget?.name === info.name ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0'}`} />
-          </button>
-        ))}
-        <button
-          onClick={() => setSelectedTarget(MOON_INFO)}
-          className={`flex items-center gap-4 px-5 py-3 rounded-r-full border-l-4 transition-all mt-4 ${
-            selectedTarget?.name === MOON_INFO.name ? 'bg-indigo-500/20 border-indigo-500 text-white' : 'bg-black/40 border-white/10 text-slate-500'
-          }`}
-        >
-          <MoonIcon className="w-4 h-4 text-indigo-400" />
-          <span className="text-sm font-black tech-font uppercase tracking-widest">{MOON_INFO.name}</span>
+        </div>
+        <button onClick={onClose} className="p-4 bg-white/5 border border-white/10 hover:bg-red-500 transition-all rounded-full pointer-events-auto">
+          <X className="w-6 h-6 opacity-60 hover:opacity-100" />
         </button>
       </div>
 
-      <div className="absolute inset-0 pointer-events-none p-6 md:p-12 flex flex-col justify-between border-[2px] border-white/5 m-4 md:m-8">
-        <div className="flex flex-col md:flex-row justify-between items-start gap-8">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-white text-4xl md:text-6xl font-black italic tech-font flex items-center gap-5">
-              <Telescope className="w-12 h-12 text-cyan-400 drop-shadow-[0_0_20px_cyan]" /> GAIA OBSERVER
-            </h1>
-            <div className="flex items-center gap-6 text-[11px] font-mono text-cyan-400/80 uppercase tracking-[0.4em] bg-white/5 px-6 py-2 rounded-full border border-white/10 backdrop-blur-xl">
-               <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> 探测深度: {(zoomLevel/100).toFixed(4)} AU</span>
-               <span className="animate-pulse text-emerald-400 flex items-center gap-2"><Radio className="w-4 h-4" /> 全系定位系统已激活</span>
-            </div>
-          </div>
-          <div className="flex gap-4 pointer-events-auto items-center">
-             <div className="hidden lg:flex gap-6 items-center">
-                {Object.values(SCALES).map(s => (
-                  <div key={s.id} className="flex flex-col items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full border-2 transition-all duration-1000 ${activeScale === s.id ? 'bg-cyan-400 border-cyan-400 scale-125 shadow-[0_0_25px_cyan]' : 'border-white/20 bg-transparent opacity-20'}`}></div>
-                    <span className={`text-[10px] font-black tech-font tracking-tighter uppercase ${activeScale === s.id ? 'text-cyan-400' : 'text-white/30'}`}>{s.label}</span>
-                  </div>
-                ))}
-             </div>
-             <button onClick={onClose} className="p-5 bg-red-600/10 border border-red-500/20 text-red-500 hover:bg-red-600 hover:text-white transition-all rounded-2xl ml-8 backdrop-blur-md group">
-                <X className="w-8 h-8 group-hover:rotate-90 transition-transform" />
-             </button>
+      {/* 左侧选择器：更通透 */}
+      <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-1000 z-[55] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-1.5rem)]'}`}>
+        <div className="w-56 h-[60vh] bg-black/30 backdrop-blur-2xl border-y border-r border-white/10 rounded-r-[40px] p-6 flex flex-col pointer-events-auto">
+          <div className="text-[9px] font-black text-white/30 tracking-[0.4em] uppercase mb-8 italic px-2">Archive List</div>
+          <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1">
+            {Object.values(PLANETS_DATA).map(p => !p.isMoon && !p.isGalaxy && (
+              <button 
+                key={p.name} 
+                onClick={() => handleSelect(p.name)}
+                className={`w-full text-left px-5 py-3 rounded-2xl text-[10px] font-bold tracking-[0.2em] transition-all uppercase ${selectedName === p.name ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-white/30 hover:text-white hover:bg-white/5'}`}
+              >
+                {p.name}
+              </button>
+            ))}
           </div>
         </div>
-
-        <div className="flex flex-col md:flex-row justify-between items-end gap-12">
-            <div className={`w-full md:w-[480px] bg-black/95 backdrop-blur-3xl border-l-[6px] border-cyan-400 p-10 pointer-events-auto transition-all duration-700 shadow-2xl ${selectedTarget ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-24'}`}>
-                {selectedTarget && (
-                  <div className="animate-in fade-in slide-in-from-left-6 duration-700">
-                    <div className="flex justify-between items-start mb-8">
-                        <div>
-                            <h3 className="text-4xl font-black text-white tech-font italic tracking-widest uppercase mb-1 flex items-center gap-4">
-                              <Target className="w-8 h-8 text-cyan-400 animate-pulse" />
-                              {selectedTarget.name}
-                            </h3>
-                            <p className="text-cyan-400 text-xs font-mono tracking-widest uppercase">
-                                分类: {selectedTarget.type} / 核心半径: {selectedTarget.radius}
-                            </p>
-                        </div>
-                        <div className="px-3 py-1 bg-cyan-400/20 text-cyan-400 text-[10px] font-black border border-cyan-400/40 rounded-sm uppercase italic">Locked On</div>
-                    </div>
-                    <p className="text-slate-200 text-lg leading-relaxed mb-10 font-light border-t border-white/10 pt-8 opacity-90 italic">
-                      “{selectedTarget.desc}”
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                        <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">环境特征 / Features</p>
-                        <p className="text-cyan-300 font-mono text-base">{selectedTarget.extra || (selectedTarget.isCity ? `人口: ${selectedTarget.pop}M` : '稳定')}</p>
-                      </div>
-                      <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                        <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">监测距离 / Distance</p>
-                        <p className="text-emerald-400 font-mono text-base flex items-center gap-2"><Activity className="w-4 h-4" /> 链路实时同步</p>
-                      </div>
-                    </div>
-                    <button onClick={() => setSelectedTarget(null)} className="text-red-400 hover:text-red-300 transition-colors flex items-center gap-2 uppercase text-xs font-black tracking-widest group">
-                      释放锁定 / RELEASE <X className="w-4 h-4 group-hover:rotate-90 transition-transform"/>
-                    </button>
-                  </div>
-                )}
-            </div>
-
-            <div className="flex flex-col items-end gap-8 pointer-events-auto">
-               <div className="flex gap-4 bg-black/80 p-3 rounded-[2rem] border border-white/10 backdrop-blur-3xl shadow-xl">
-                  <ControlButton active={autoRotate} onClick={() => setAutoRotate(!autoRotate)} icon={<RotateCw className={`w-6 h-6 ${autoRotate ? 'animate-[spin_12s_linear_infinite]' : ''}`} />} label="轨道同步" />
-                  <div className="w-[1px] h-12 bg-white/10"></div>
-                  <ControlButton active={true} onClick={() => {}} icon={<Sparkles className="w-6 h-6 text-cyan-400" />} label="导航已就绪" />
-               </div>
-               <div className="flex flex-col items-end gap-3 px-8 py-5 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-2xl">
-                  <div className="flex items-center gap-3 text-xs font-mono text-cyan-400/60 uppercase tracking-tighter"><Move className="w-4 h-4" /> 侧边栏：一键锁定行星</div>
-                  <div className="flex items-center gap-3 text-xs font-mono text-cyan-400/60 uppercase tracking-tighter"><Compass className="w-4 h-4" /> 滚轮：进行星际跃迁</div>
-               </div>
-            </div>
-        </div>
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-6 h-20 bg-white/5 backdrop-blur-3xl rounded-r-2xl flex items-center justify-center text-cyan-400/30 hover:text-cyan-400 transition-colors pointer-events-auto">
+          {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
       </div>
-      <style>{`.tech-font { font-family: 'Orbitron', 'Microsoft YaHei', sans-serif; }`}</style>
+
+      {/* 2. 右下角详情面板：可收起，避让中心视线 */}
+      {selectedName && current && (
+        <div className={`absolute right-8 bottom-32 w-[340px] z-[50] pointer-events-auto transition-all duration-700 ${isPanelVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'}`}>
+           <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[40px] p-10 shadow-2xl relative overflow-hidden group">
+              <button 
+                onClick={() => setIsPanelVisible(false)}
+                className="absolute top-6 right-8 text-white/20 hover:text-white transition-colors"
+              >
+                <ChevronDown size={20} />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                 <span className="text-[8px] text-emerald-500 font-black uppercase tracking-[0.4em]">Live Telemetry</span>
+              </div>
+              
+              <h2 className="text-4xl font-black italic tracking-tighter mb-4 uppercase" style={{ color: current.color }}>{current.name}</h2>
+              <p className="text-white/60 text-[12px] leading-relaxed font-light italic mb-8 line-clamp-3">
+                {current.desc}
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <span className="text-[7px] text-white/20 font-bold uppercase block mb-1">Type</span>
+                  <div className="text-white text-[10px] font-bold uppercase">{current.type}</div>
+                </div>
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <span className="text-[7px] text-white/20 font-bold uppercase block mb-1">Status</span>
+                  <div className="text-emerald-400 text-[10px] font-bold uppercase">{current.status || 'Active'}</div>
+                </div>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* 面板最小化恢复按钮 */}
+      {selectedName && !isPanelVisible && (
+        <button 
+          onClick={() => setIsPanelVisible(true)}
+          className="absolute right-12 bottom-36 p-5 bg-cyan-500/10 backdrop-blur-3xl border border-cyan-400/30 rounded-full text-cyan-400 animate-in fade-in zoom-in duration-300 shadow-[0_0_20px_rgba(34,211,238,0.2)]"
+        >
+          <BarChart3 size={24} />
+        </button>
+      )}
+
+      {/* 底部导航中心 */}
+      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-10 bg-white/5 backdrop-blur-2xl px-12 py-5 border border-white/10 rounded-full shadow-2xl z-[60] pointer-events-auto">
+          <button onClick={() => setIsAutoRotating(!isAutoRotating)} className={`flex items-center gap-4 transition-all ${isAutoRotating ? 'text-cyan-400' : 'text-white/20 hover:text-white'}`}>
+            <RotateCw size={16} className={isAutoRotating ? 'animate-[spin_12s_linear_infinite]' : ''} />
+            <span className="text-[10px] font-black tracking-[0.3em] uppercase italic">Cruise</span>
+          </button>
+          <div className="w-px h-6 bg-white/10"></div>
+          <button onClick={() => handleSelect(null)} className={`flex items-center gap-4 transition-all ${!selectedName ? 'text-white' : 'text-white/20 hover:text-white'}`}>
+            <Move size={16} />
+            <span className="text-[10px] font-black tracking-[0.3em] uppercase italic">Explore</span>
+          </button>
+      </div>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+      `}</style>
     </div>
   );
 };
-
-const ControlButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
-    <button onClick={onClick} className={`px-8 py-4 flex items-center gap-4 transition-all rounded-[1.5rem] text-xs font-black tech-font uppercase tracking-[0.2em] ${active ? 'bg-cyan-500/10 text-cyan-400 shadow-[inset_0_0_30px_rgba(6,182,212,0.15)]' : 'text-slate-500 hover:text-slate-300'}`}>
-        {icon} {label}
-    </button>
-);
 
 export default Earth3D;
