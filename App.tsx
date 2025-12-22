@@ -9,6 +9,7 @@ import Earth3D from './components/Earth3D';
 import FoodChainApp from './components/FoodChainApp';
 import CharacterApp from './components/CharacterApp';
 import ClockApp from './components/ClockApp';
+import PoetryApp from './components/PoetryApp'; // 新增导入
 import HeroSpotlight from './components/HeroSpotlight';
 import ActivityTicker from './components/ActivityTicker';
 import AuthUI from './components/AuthUI';
@@ -96,10 +97,12 @@ const App: React.FC = () => {
     );
   }
 
+  // 应用分发逻辑
   if (runningAppId === 'e1') return <Earth3D onClose={() => setRunningAppId(null)} />;
   if (runningAppId === 'e2') return <FoodChainApp onClose={() => setRunningAppId(null)} />;
   if (runningAppId === 'e4') return <CharacterApp onClose={() => setRunningAppId(null)} />;
   if (runningAppId === 'e7') return <ClockApp onClose={() => setRunningAppId(null)} />;
+  if (runningAppId === 'e5') return <PoetryApp onClose={() => setRunningAppId(null)} />; // 挂载古诗模块
 
   if (runningAppId) {
     return (
