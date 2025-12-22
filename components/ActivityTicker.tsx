@@ -22,7 +22,7 @@ const ActivityTicker: React.FC = () => {
         <div className="absolute flex whitespace-nowrap gap-16 animate-[ticker_60s_linear_infinite]">
           {[...activities, ...activities].map((text, i) => (
             <span key={i} className="text-[8px] font-mono text-slate-700 flex items-center gap-3 italic tracking-widest">
-              <span className="text-emerald-500/20">>></span> {text}
+              <span className="text-emerald-500/20">{" >> "}</span> {text}
             </span>
           ))}
         </div>
