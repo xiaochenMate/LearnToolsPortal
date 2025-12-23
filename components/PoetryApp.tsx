@@ -4,7 +4,7 @@ import {
   X, RotateCcw, CheckCircle, Volume2, Award, ArrowRight, Play, 
   Sparkles, Search, Filter, BookOpen, ChevronRight, Bookmark, 
   Settings2, Music, Languages, Info, History, Trophy, Loader2,
-  AlertCircle, DatabaseZap, Database
+  AlertCircle, DatabaseZap, Database, RefreshCw
 } from 'lucide-react';
 import sql from '../lib/neon';
 import { Poem, POEM_LIBRARY } from '../lib/poems';
@@ -21,13 +21,16 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [showLibrary, setShowLibrary] = useState(false);
   const [dataSource, setDataSource] = useState<'NEON' | 'LOCAL' | null>(null);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   const fetchPoems = useCallback(async () => {
     setLoading(true);
+    setDbError(null);
     
     try {
       if (sql) {
         console.log("[Neon] Attempting cloud fetch...");
+        // 尝试查询数据
         const data = categoryFilter === 'all' 
           ? await sql`SELECT * FROM poems ORDER BY id ASC LIMIT 300`
           : await sql`SELECT * FROM poems WHERE category = ${categoryFilter} ORDER BY id ASC LIMIT 300`;
@@ -43,14 +46,19 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           setCurrentIdx(Math.floor(Math.random() * formattedData.length));
           setLoading(false);
           return;
+        } else if (data && data.length === 0) {
+           setDbError("云端数据库已连接，但 'poems' 表中目前没有任何数据。");
         }
+      } else {
+        setDbError("未检测到数据库配置变量 (VITE_DATABASE_URL)。");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Neon] Database connection error:", err);
+      // 将具体的数据库错误暴露出来
+      setDbError(err.message || "连接云端数据库时发生未知错误");
     }
 
-    // 无论是因为 sql 为空还是查询报错，都统一回退到本地
-    console.log("[Poetry] Using local poem library.");
+    // 无论是因为 sql 为空还是查询报错，都回退到本地
     const localData = categoryFilter === 'all' 
       ? POEM_LIBRARY 
       : POEM_LIBRARY.filter(p => p.category === categoryFilter);
@@ -129,23 +137,26 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return (
       <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-rose-600 animate-spin mb-4" />
-        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在初始化系统资源...</p>
-      </div>
-    );
-  }
-
-  if (!poem) {
-    return (
-      <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center p-8 text-center">
-        <AlertCircle className="w-16 h-16 text-stone-200 mb-6" />
-        <h2 className="text-2xl font-bold text-stone-800 mb-2">未发现诗词数据</h2>
-        <button onClick={() => setCategoryFilter('all')} className="px-8 py-3 bg-rose-600 text-white rounded-2xl font-bold">重试加载</button>
+        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在握手云端数据库...</p>
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 z-[60] bg-[#FDFBF7] flex flex-col h-full overflow-hidden select-none font-serif">
+      {/* 顶部警告条：如果 DB 有错则显示 */}
+      {dbError && (
+        <div className="bg-amber-50 border-b border-amber-100 px-6 py-2 flex items-center justify-between animate-in slide-in-from-top duration-300">
+           <div className="flex items-center gap-2 text-amber-700 text-xs font-medium">
+             <AlertCircle size={14} />
+             <span>云端连接受阻：{dbError} (已切换至本地演示模式)</span>
+           </div>
+           <button onClick={() => fetchPoems()} className="text-[10px] font-black text-amber-600 flex items-center gap-1 hover:underline">
+             <RefreshCw size={10} /> 立即重试
+           </button>
+        </div>
+      )}
+
       <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-stone-200 shrink-0 z-50">
         <div className="flex items-center gap-4">
           <div className="p-2.5 bg-rose-600 rounded-xl shadow-lg shadow-rose-100 flex items-center justify-center">
@@ -175,6 +186,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </header>
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* 侧边栏和主界面保持不变... */}
         <aside className="hidden lg:flex w-80 flex-col p-8 border-r border-stone-100 overflow-y-auto no-scrollbar bg-stone-50/30">
           <section className="mb-10">
              <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
@@ -202,57 +214,68 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
              </div>
           </section>
 
-          <section className="mt-auto">
-             <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-[0.05] rotate-12"><History size={64}/></div>
-                <h2 className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-3 italic">学而时习之</h2>
-                <div className="text-2xl font-black text-stone-800 mb-1">{poem.title}</div>
-                <div className="text-stone-400 text-xs mb-4">{poem.dynasty} · {poem.author}</div>
-                <div className="p-4 bg-stone-50 rounded-2xl text-[11px] leading-relaxed text-stone-500 italic border border-stone-100">
-                  {poem.meaning}
-                </div>
-             </div>
-          </section>
+          {poem && (
+            <section className="mt-auto">
+               <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-[0.05] rotate-12"><History size={64}/></div>
+                  <h2 className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-3 italic">学而时习之</h2>
+                  <div className="text-2xl font-black text-stone-800 mb-1">{poem.title}</div>
+                  <div className="text-stone-400 text-xs mb-4">{poem.dynasty} · {poem.author}</div>
+                  <div className="p-4 bg-stone-50 rounded-2xl text-[11px] leading-relaxed text-stone-500 italic border border-stone-100">
+                    {poem.meaning}
+                  </div>
+               </div>
+            </section>
+          )}
         </aside>
 
         <div className="flex-1 flex flex-col p-4 sm:p-10 gap-6 relative overflow-hidden">
-          <div className="flex-1 bg-white/40 border-4 border-dashed border-stone-200 rounded-[3rem] p-6 sm:p-10 flex flex-col justify-center items-center gap-6 overflow-y-auto no-scrollbar relative">
-            {lines.length === 0 && !isSuccess && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20 pointer-events-none text-center">
-                 {dataSource === 'NEON' ? <DatabaseZap size={100} className="text-blue-200 mb-4 mx-auto" /> : <Sparkles size={100} className="text-stone-200 mb-4 mx-auto" />}
-                 <p className="text-stone-400 font-bold italic tracking-widest text-lg">数据库连接成功<br/>请点选诗句重塑华章</p>
+          {poem ? (
+            <>
+              <div className="flex-1 bg-white/40 border-4 border-dashed border-stone-200 rounded-[3rem] p-6 sm:p-10 flex flex-col justify-center items-center gap-6 overflow-y-auto no-scrollbar relative">
+                {lines.length === 0 && !isSuccess && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20 pointer-events-none text-center">
+                    {dataSource === 'NEON' ? <DatabaseZap size={100} className="text-blue-200 mb-4 mx-auto" /> : <Sparkles size={100} className="text-stone-200 mb-4 mx-auto" />}
+                    <p className="text-stone-400 font-bold italic tracking-widest text-lg">数据库连接成功<br/>请点选诗句重塑华章</p>
+                  </div>
+                )}
+                <div className="w-full max-w-2xl flex flex-col gap-4">
+                  {lines.map((line, idx) => (
+                    <button key={idx} onClick={() => handleRemove(line)} className={`w-full px-8 py-5 bg-white border-2 border-stone-200 rounded-[2rem] text-xl sm:text-3xl font-black text-stone-800 shadow-sm transition-all hover:scale-[1.02] hover:border-rose-300 ${isSuccess ? 'border-rose-500 bg-rose-50 text-rose-900 shadow-rose-100' : ''}`}>
+                      {line}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-            <div className="w-full max-w-2xl flex flex-col gap-4">
-              {lines.map((line, idx) => (
-                <button key={idx} onClick={() => handleRemove(line)} className={`w-full px-8 py-5 bg-white border-2 border-stone-200 rounded-[2rem] text-xl sm:text-3xl font-black text-stone-800 shadow-sm transition-all hover:scale-[1.02] hover:border-rose-300 ${isSuccess ? 'border-rose-500 bg-rose-50 text-rose-900 shadow-rose-100' : ''}`}>
-                  {line}
+
+              <div className="flex flex-wrap justify-center gap-3 sm:gap-4 shrink-0">
+                {shuffled.map((line, idx) => (
+                  <button key={idx} onClick={() => handlePick(line)} className="px-6 sm:px-10 py-3 sm:py-4 bg-white border-2 border-stone-100 rounded-2xl text-lg sm:text-xl font-bold text-stone-600 hover:border-rose-500 hover:text-rose-700 shadow-sm active:scale-90 transition-all">
+                    {line}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex justify-center gap-4 shrink-0">
+                <button onClick={initPoem} className="px-6 py-4 bg-stone-100 border border-stone-200 text-stone-500 rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-stone-200 transition-all active:scale-95">
+                  <RotateCcw size={18} /> 重置
                 </button>
-              ))}
+                <button onClick={() => setShowLibrary(true)} className="px-6 py-4 bg-stone-900 text-white rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-black transition-all active:scale-95 shadow-xl">
+                  <BookOpen size={18} /> 查阅百科
+                </button>
+                <button onClick={handleVerify} disabled={lines.length !== poem.lines.length} className={`px-10 py-4 rounded-2xl font-black text-lg flex items-center gap-3 transition-all ${lines.length === poem.lines.length ? 'bg-rose-600 text-white shadow-xl shadow-rose-200 hover:bg-rose-500 scale-105' : 'bg-stone-200 text-stone-400 cursor-not-allowed'}`}>
+                  <CheckCircle size={22}/> 完卷呈阅
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <AlertCircle size={48} className="text-stone-200 mb-4" />
+              <p className="text-stone-400 font-bold">该分类下暂无内容</p>
             </div>
-          </div>
+          )}
 
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 shrink-0">
-            {shuffled.map((line, idx) => (
-              <button key={idx} onClick={() => handlePick(line)} className="px-6 sm:px-10 py-3 sm:py-4 bg-white border-2 border-stone-100 rounded-2xl text-lg sm:text-xl font-bold text-stone-600 hover:border-rose-500 hover:text-rose-700 shadow-sm active:scale-90 transition-all">
-                {line}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex justify-center gap-4 shrink-0">
-            <button onClick={initPoem} className="px-6 py-4 bg-stone-100 border border-stone-200 text-stone-500 rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-stone-200 transition-all active:scale-95">
-              <RotateCcw size={18} /> 重置
-            </button>
-            <button onClick={() => setShowLibrary(true)} className="px-6 py-4 bg-stone-900 text-white rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-black transition-all active:scale-95 shadow-xl">
-              <BookOpen size={18} /> 查阅百科
-            </button>
-            <button onClick={handleVerify} disabled={lines.length !== poem.lines.length} className={`px-10 py-4 rounded-2xl font-black text-lg flex items-center gap-3 transition-all ${lines.length === poem.lines.length ? 'bg-rose-600 text-white shadow-xl shadow-rose-200 hover:bg-rose-500 scale-105' : 'bg-stone-200 text-stone-400 cursor-not-allowed'}`}>
-              <CheckCircle size={22}/> 完卷呈阅
-            </button>
-          </div>
-
-          {isSuccess && (
+          {isSuccess && poem && (
             <div className="fixed inset-0 z-[100] bg-[#FDFBF7]/98 backdrop-blur-3xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-700">
                <div className="w-full max-w-3xl flex flex-col items-center">
                  <div className="relative w-full h-48 sm:h-80 rounded-[3rem] overflow-hidden mb-8 shadow-2xl border-4 border-white bg-stone-200">
