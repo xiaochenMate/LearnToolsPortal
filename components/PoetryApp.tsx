@@ -29,36 +29,38 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     
     try {
       if (sql) {
-        console.log("[Neon] Attempting cloud fetch...");
-        // 尝试查询数据
+        // 执行查询
         const data = categoryFilter === 'all' 
-          ? await sql`SELECT * FROM poems ORDER BY id ASC LIMIT 300`
-          : await sql`SELECT * FROM poems WHERE category = ${categoryFilter} ORDER BY id ASC LIMIT 300`;
+          ? await sql`SELECT * FROM poems ORDER BY id ASC LIMIT 500`
+          : await sql`SELECT * FROM poems WHERE category = ${categoryFilter} ORDER BY id ASC LIMIT 500`;
         
         if (data && data.length > 0) {
           const formattedData = data.map(p => ({
             ...p,
+            // 关键修复：Neon 的 text[] 已经是数组，但如果是字符串则尝试解析
             lines: Array.isArray(p.lines) ? p.lines : (typeof p.lines === 'string' ? JSON.parse(p.lines) : []),
-            image: p.image_url || p.image || 'https://picsum.photos/800/600?nature'
+            image: p.image_url || p.image || `https://picsum.photos/800/600?nature,${p.id}`
           }));
           setPoems(formattedData as any);
           setDataSource('NEON');
           setCurrentIdx(Math.floor(Math.random() * formattedData.length));
           setLoading(false);
           return;
+        } else if (data && data.length === 0 && categoryFilter !== 'all') {
+           // 如果特定分类没数据，提示用户
+           setDbError(`云端数据库中尚未发现分类为 '${categoryFilter}' 的诗词。`);
         } else if (data && data.length === 0) {
-           setDbError("云端数据库已连接，但 'poems' 表中目前没有任何数据。");
+           setDbError("云端数据库 'poems' 表目前是空的。");
         }
       } else {
         setDbError("未检测到数据库配置变量 (VITE_DATABASE_URL)。");
       }
     } catch (err: any) {
       console.error("[Neon] Database connection error:", err);
-      // 将具体的数据库错误暴露出来
       setDbError(err.message || "连接云端数据库时发生未知错误");
     }
 
-    // 无论是因为 sql 为空还是查询报错，都回退到本地
+    // 回退到本地
     const localData = categoryFilter === 'all' 
       ? POEM_LIBRARY 
       : POEM_LIBRARY.filter(p => p.category === categoryFilter);
@@ -137,22 +139,21 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return (
       <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-rose-600 animate-spin mb-4" />
-        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在握手云端数据库...</p>
+        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在同步云端诗藏...</p>
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 z-[60] bg-[#FDFBF7] flex flex-col h-full overflow-hidden select-none font-serif">
-      {/* 顶部警告条：如果 DB 有错则显示 */}
       {dbError && (
         <div className="bg-amber-50 border-b border-amber-100 px-6 py-2 flex items-center justify-between animate-in slide-in-from-top duration-300">
            <div className="flex items-center gap-2 text-amber-700 text-xs font-medium">
              <AlertCircle size={14} />
-             <span>云端连接受阻：{dbError} (已切换至本地演示模式)</span>
+             <span>云端连接提示：{dbError} (当前使用本地数据)</span>
            </div>
            <button onClick={() => fetchPoems()} className="text-[10px] font-black text-amber-600 flex items-center gap-1 hover:underline">
-             <RefreshCw size={10} /> 立即重试
+             <RefreshCw size={10} /> 刷新数据库
            </button>
         </div>
       )}
@@ -169,7 +170,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                  {dataSource === 'NEON' ? 'NEON CLOUD' : 'LOCAL CACHE'} / {poems.length} Items
                </span>
                <div className="w-1 h-1 rounded-full bg-stone-300"></div>
-               <span className="text-[10px] font-bold text-stone-400">DATA_SYNC: {sql ? 'READY' : 'OFFLINE'}</span>
+               <span className="text-[10px] font-bold text-stone-400">SYNC: {sql ? 'READY' : 'OFFLINE'}</span>
             </div>
           </div>
         </div>
@@ -186,21 +187,23 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </header>
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* 侧边栏和主界面保持不变... */}
         <aside className="hidden lg:flex w-80 flex-col p-8 border-r border-stone-100 overflow-y-auto no-scrollbar bg-stone-50/30">
           <section className="mb-10">
              <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
                <Filter size={14} /> 题材分类
              </h3>
              <div className="grid grid-cols-1 gap-2">
+               {/* 这里的 ID 必须匹配你数据库中的 category 字段值 */}
                {[
                  { id: 'all', label: '全部诗篇' },
                  { id: 'nature', label: '写景咏物' },
                  { id: 'homesick', label: '羁旅思乡' },
-                 { id: 'friendship', label: '友人送别' },
-                 { id: 'ambition', label: '壮志抱负' },
-                 { id: 'reason', label: '哲理感悟' },
-                 { id: 'festive', label: '节日节令' }
+                 { id: 'farewell', label: '友人送别' },
+                 { id: 'motivation', label: '壮志抱负' },
+                 { id: 'festival', label: '节日节令' },
+                 { id: 'history', label: '咏史怀古' },
+                 { id: 'spring', label: '春日气息' },
+                 { id: 'autumn', label: '秋日私语' }
                ].map(cat => (
                  <button 
                   key={cat.id} 
@@ -271,7 +274,8 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <AlertCircle size={48} className="text-stone-200 mb-4" />
-              <p className="text-stone-400 font-bold">该分类下暂无内容</p>
+              <p className="text-stone-400 font-bold uppercase tracking-widest">该分类下暂无内容</p>
+              <button onClick={() => setCategoryFilter('all')} className="mt-4 px-6 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold">返回全部</button>
             </div>
           )}
 
@@ -279,13 +283,13 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <div className="fixed inset-0 z-[100] bg-[#FDFBF7]/98 backdrop-blur-3xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-700">
                <div className="w-full max-w-3xl flex flex-col items-center">
                  <div className="relative w-full h-48 sm:h-80 rounded-[3rem] overflow-hidden mb-8 shadow-2xl border-4 border-white bg-stone-200">
-                   <img src={poem.image_url || poem.image} className="w-full h-full object-cover" alt="意境" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                   <img src={poem.image_url || poem.image} className="w-full h-full object-cover" alt="意境" onError={(e) => (e.currentTarget.src = 'https://picsum.photos/800/600?nature')} />
                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
                      <div className="text-white text-3xl sm:text-5xl font-black tracking-tight mb-2">{poem.title}</div>
                      <div className="text-white/80 text-xl font-bold">{poem.dynasty} · {poem.author}</div>
                    </div>
                  </div>
-                 <p className="text-stone-800 text-lg sm:text-2xl font-bold leading-relaxed mb-10 italic text-center">“{poem.meaning}”</p>
+                 <p className="text-stone-800 text-lg sm:text-2xl font-bold leading-relaxed mb-10 italic text-center px-4">“{poem.meaning}”</p>
                  <div className="flex gap-4 w-full max-w-md">
                    <button onClick={() => playTTS(`${poem.title}, ${poem.author}, ${poem.lines.join(', ')}`)} className="flex-1 py-4 sm:py-5 bg-stone-900 text-white rounded-[2rem] font-black flex items-center justify-center gap-3 shadow-xl">
                      <Volume2 size={24}/> 聆听吟诵
@@ -301,14 +305,14 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </main>
 
       {showLibrary && (
-        <div className="fixed inset-0 z-[110] bg-[#FDFBF7] flex flex-col p-6 sm:p-12 animate-in slide-in-from-right duration-500 overflow-hidden">
+        <div className="fixed inset-0 z-[110] bg-[#FDFBF7] flex flex-col p-4 sm:p-12 animate-in slide-in-from-right duration-500 overflow-hidden">
            <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
-             <div className="flex justify-between items-center mb-10 shrink-0">
+             <div className="flex justify-between items-center mb-8 shrink-0">
                 <div className="flex items-center gap-5">
                    <div className="p-4 bg-stone-900 rounded-[1.5rem] text-white shadow-2xl"><BookOpen size={40}/></div>
                    <div>
-                     <h2 className="text-3xl sm:text-5xl font-black text-stone-900 tracking-tighter">古诗百科辞典</h2>
-                     <p className="text-[10px] font-black text-stone-400 uppercase tracking-[0.4em] mt-2 italic">Database Source: {dataSource} / {poems.length} Items</p>
+                     <h2 className="text-2xl sm:text-5xl font-black text-stone-900 tracking-tighter">古诗百科辞典</h2>
+                     <p className="text-[10px] font-black text-stone-400 uppercase tracking-[0.4em] mt-2 italic">Database: {dataSource} / {poems.length} Items</p>
                    </div>
                 </div>
                 <button onClick={() => setShowLibrary(false)} className="p-4 bg-white border border-stone-200 rounded-full text-slate-400 hover:text-slate-900 shadow-sm transition-all">
