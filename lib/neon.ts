@@ -3,33 +3,35 @@ import { neon } from '@neondatabase/serverless';
 
 const getDatabaseUrl = (): string => {
   try {
-    // 优先级 1: 用户手动配置的 VITE_ 变量 (推荐)
+    /**
+     * 在 Vite 项目中，环境变量必须以 VITE_ 开头
+     * 且通过 import.meta.env 访问
+     */
     // @ts-ignore
     const viteVar = import.meta.env?.VITE_DATABASE_URL;
     if (viteVar) return viteVar;
 
-    // 优先级 2: Netlify Neon 插件自动注入的变量 (某些构建阶段可用)
+    /**
+     * 如果用户没有配置 VITE_ 前缀，尝试读取插件可能注入的默认变量
+     * 注意：某些插件可能不会自动将变量暴露给客户端，除非以 VITE_ 开头
+     */
     // @ts-ignore
-    const netlifyNeon = import.meta.env?.DATABASE_URL || import.meta.env?.NETLIFY_DATABASE_URL;
-    if (netlifyNeon) return netlifyNeon;
+    const dbUrl = import.meta.env?.DATABASE_URL || import.meta.env?.NETLIFY_DATABASE_URL;
+    if (dbUrl) return dbUrl;
 
-    // 优先级 3: 后备 process.env (Node 预处理阶段)
-    if (typeof process !== 'undefined' && process.env) {
-      return process.env.VITE_DATABASE_URL || process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL || '';
-    }
   } catch (e) {
-    console.warn("[Neon] Failed to access environment variables:", e);
+    console.warn("[Neon] Environment access restricted:", e);
   }
   return '';
 };
 
-const dbUrl = getDatabaseUrl();
+const url = getDatabaseUrl();
 
-// 初始化连接
-export const sql = dbUrl ? neon(dbUrl) : null;
+// 导出 sql 实例，如果 URL 缺失则为 null
+export const sql = url ? neon(url) : null;
 
 if (!sql) {
-  console.warn("[Neon] Database connection string not found. Using local library fallback.");
+  console.info("[Neon] No database URL found. App will use local poem library.");
 }
 
 export default sql;

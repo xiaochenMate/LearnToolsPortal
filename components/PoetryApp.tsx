@@ -25,20 +25,16 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const fetchPoems = useCallback(async () => {
     setLoading(true);
     
-    if (sql) {
-      try {
-        console.log("[Neon] Attempting to fetch from cloud...");
-        let data;
-        if (categoryFilter === 'all') {
-          data = await sql`SELECT * FROM poems ORDER BY id ASC LIMIT 300`;
-        } else {
-          data = await sql`SELECT * FROM poems WHERE category = ${categoryFilter} ORDER BY id ASC LIMIT 300`;
-        }
+    try {
+      if (sql) {
+        console.log("[Neon] Attempting cloud fetch...");
+        const data = categoryFilter === 'all' 
+          ? await sql`SELECT * FROM poems ORDER BY id ASC LIMIT 300`
+          : await sql`SELECT * FROM poems WHERE category = ${categoryFilter} ORDER BY id ASC LIMIT 300`;
         
         if (data && data.length > 0) {
           const formattedData = data.map(p => ({
             ...p,
-            // Neon 的 TEXT[] 会自动转为数组，如果存的是字符串则尝试解析
             lines: Array.isArray(p.lines) ? p.lines : (typeof p.lines === 'string' ? JSON.parse(p.lines) : []),
             image: p.image_url || p.image || 'https://picsum.photos/800/600?nature'
           }));
@@ -48,15 +44,20 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           setLoading(false);
           return;
         }
-      } catch (err) {
-        console.warn("[Neon] DB connection failed or table not found, falling back to local data.", err);
       }
+    } catch (err) {
+      console.error("[Neon] Database connection error:", err);
     }
 
-    // 回退到本地
-    setPoems(categoryFilter === 'all' ? POEM_LIBRARY : POEM_LIBRARY.filter(p => p.category === categoryFilter));
+    // 无论是因为 sql 为空还是查询报错，都统一回退到本地
+    console.log("[Poetry] Using local poem library.");
+    const localData = categoryFilter === 'all' 
+      ? POEM_LIBRARY 
+      : POEM_LIBRARY.filter(p => p.category === categoryFilter);
+    
+    setPoems(localData);
     setDataSource('LOCAL');
-    setCurrentIdx(Math.floor(Math.random() * POEM_LIBRARY.length));
+    setCurrentIdx(Math.floor(Math.random() * localData.length));
     setLoading(false);
   }, [categoryFilter]);
 
@@ -128,7 +129,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return (
       <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-rose-600 animate-spin mb-4" />
-        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在连接 Neon 数据库...</p>
+        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在初始化系统资源...</p>
       </div>
     );
   }
@@ -137,8 +138,8 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return (
       <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center p-8 text-center">
         <AlertCircle className="w-16 h-16 text-stone-200 mb-6" />
-        <h2 className="text-2xl font-bold text-stone-800 mb-2">未发现诗词</h2>
-        <button onClick={() => setCategoryFilter('all')} className="px-8 py-3 bg-rose-600 text-white rounded-2xl font-bold">重试</button>
+        <h2 className="text-2xl font-bold text-stone-800 mb-2">未发现诗词数据</h2>
+        <button onClick={() => setCategoryFilter('all')} className="px-8 py-3 bg-rose-600 text-white rounded-2xl font-bold">重试加载</button>
       </div>
     );
   }
