@@ -3,19 +3,19 @@ import React from 'react';
 
 const ActivityTicker: React.FC = () => {
   const activities = [
-    "LINKING_NEURAL_NODE_771",
-    "SYNCING_GALACTIC_CORE_DATA",
-    "MODULE_DEPLOYED: [CLOCK_TRAINING]",
-    "CONNECTION_STABLE: 12ms",
-    "SYSTEM_LOAD: 0.24%",
-    "ENCRYPTION_KEY_REFRESHED",
-    "USER_X102_ENTERED_MODULE_HUB"
+    "正在链接神经节点_771",
+    "同步银河核心数据中",
+    "模块已部署: [时钟训练]",
+    "连接稳定: 12ms",
+    "系统负载: 0.24%",
+    "加密密钥已更新",
+    "用户_X102_进入模块中心"
   ];
 
   return (
     <div className="fixed bottom-0 w-full bg-slate-950/40 backdrop-blur-sm border-t border-slate-900 py-1.5 z-[45] overflow-hidden flex items-center">
       <div className="px-6 border-r border-slate-900 text-[9px] font-black tracking-widest uppercase text-emerald-500/50 italic shrink-0">
-        System_Log
+        系统日志
       </div>
       
       <div className="flex-1 relative overflow-hidden h-3">
@@ -29,7 +29,7 @@ const ActivityTicker: React.FC = () => {
       </div>
 
       <div className="px-6 flex items-center gap-6 text-slate-800 shrink-0">
-        <span className="text-[8px] font-mono uppercase tracking-tighter">Status: OK</span>
+        <span className="text-[8px] font-mono uppercase tracking-tighter">状态: 正常</span>
       </div>
 
       <style>{`

@@ -11,7 +11,6 @@ interface HeroSpotlightProps {
 const HeroSpotlight: React.FC<HeroSpotlightProps> = ({ item, onRun }) => {
   return (
     <div className="relative w-full h-[460px] mb-16 rounded-[2rem] overflow-hidden border border-slate-800 shadow-2xl group">
-      {/* Background Layer */}
       <div className="absolute inset-0 bg-slate-950">
         <img 
           src={item.imageUrl} 
@@ -26,10 +25,10 @@ const HeroSpotlight: React.FC<HeroSpotlightProps> = ({ item, onRun }) => {
         <div className="max-w-xl">
           <div className="flex items-center gap-3 mb-6">
             <span className="px-3 py-1 bg-emerald-500 text-black text-[10px] font-black uppercase tracking-widest clip-button shadow-[0_0_15px_rgba(16,185,129,0.4)]">
-              Primary_Sync
+              主同步
             </span>
             <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
-              <ShieldCheck size={14} /> Link_Verified
+              <ShieldCheck size={14} /> 链接已验证
             </div>
           </div>
 
@@ -47,7 +46,7 @@ const HeroSpotlight: React.FC<HeroSpotlightProps> = ({ item, onRun }) => {
               className="px-10 py-4 bg-white text-black font-black flex items-center gap-4 clip-button hover:bg-emerald-500 transition-all active:scale-95 shadow-xl group/btn"
             >
               <Play className="w-5 h-5 fill-current group-hover/btn:translate-x-1 transition-transform" />
-              BOOT_MODULE
+              启动模块
             </button>
           </div>
         </div>
@@ -59,8 +58,8 @@ const HeroSpotlight: React.FC<HeroSpotlightProps> = ({ item, onRun }) => {
             <div key={i} className={`w-3 h-1 ${i < 3 ? 'bg-emerald-500' : 'bg-slate-800'}`}></div>
           ))}
         </div>
-        <div className="text-[9px] font-mono text-emerald-400 uppercase tracking-[0.3em]">Quantum_Link: Secure</div>
-        <div className="text-[9px] font-mono text-slate-500 uppercase tracking-[0.3em]">ID: MODULE_{item.id.toUpperCase()}</div>
+        <div className="text-[9px] font-mono text-emerald-400 uppercase tracking-[0.3em]">量子链接: 安全</div>
+        <div className="text-[9px] font-mono text-slate-500 uppercase tracking-[0.3em]">编号: 模块_{item.id.toUpperCase()}</div>
       </div>
     </div>
   );

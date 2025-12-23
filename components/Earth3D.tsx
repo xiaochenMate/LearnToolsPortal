@@ -54,28 +54,21 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
     }
   });
 
-  // 1. 去掉蓝框和虚线：纯发光文字标签
   const createLabelTexture = (name: string, color: string) => {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 128;
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, 512, 128);
-    
     ctx.font = `900 72px "Orbitron", "Inter", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
-    // 发光扩散层
     ctx.shadowBlur = 25;
     ctx.shadowColor = color;
     ctx.fillStyle = '#ffffff';
     ctx.fillText(name.toUpperCase(), 256, 64);
-    
-    // 文字本体层
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#ffffff';
     ctx.fillText(name.toUpperCase(), 256, 64);
-
     const tex = new window.THREE.CanvasTexture(canvas);
     tex.anisotropy = engine.current.maxAnisotropy;
     return tex;
@@ -100,11 +93,9 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
   useEffect(() => {
     if (initialized.current || !window.THREE || !containerRef.current) return;
     initialized.current = true;
-
     const THREE = window.THREE;
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000); // 绝对黑色
-    
+    scene.background = new THREE.Color(0x000000);
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, stencil: false });
     engine.current.maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -112,7 +103,6 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputEncoding = THREE.sRGBEncoding;
     containerRef.current.appendChild(renderer.domElement);
-
     engine.current.scene = scene;
     engine.current.camera = camera;
     engine.current.renderer = renderer;
@@ -120,10 +110,7 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
     engine.current.mouse = new THREE.Vector2();
     engine.current.vec_targetPos = new THREE.Vector3();
     engine.current.vec_camPos = new THREE.Vector3();
-
     const textureLoader = new THREE.TextureLoader();
-
-    // 背景星空粒子
     const createStars = (count: number, size: number, color: number, range: number) => {
         const geo = new THREE.BufferGeometry();
         const pos = [];
@@ -138,54 +125,36 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
     };
     scene.add(createStars(40000, 1.2, 0xffffff, 8000000));
     scene.add(createStars(8000, 4.0, 0x88ccff, 5000000));
-
-    // 光照：高对比度
     scene.add(new THREE.AmbientLight(0xffffff, 0.01)); 
     const sunLight = new THREE.PointLight(0xffffff, 6, 400000);
     scene.add(sunLight);
-
-    // 行星生成
     Object.keys(PLANETS_DATA).forEach(key => {
       const data = PLANETS_DATA[key];
       if (data.isGalaxy || data.isMoon) return;
-
       const pivot = new THREE.Group();
       scene.add(pivot);
-      
       const mat = data.isSun 
         ? new THREE.MeshBasicMaterial({ color: 0xffffff }) 
-        : new THREE.MeshStandardMaterial({ 
-            color: new THREE.Color(data.color), 
-            roughness: 0.95, 
-            metalness: 0,
-          });
-      
+        : new THREE.MeshStandardMaterial({ color: new THREE.Color(data.color), roughness: 0.95, metalness: 0 });
       const mesh = new THREE.Mesh(new THREE.SphereGeometry(data.size, 64, 64), mat);
       mesh.position.set(data.dist, 0, 0);
       mesh.userData = { name: data.name };
       pivot.add(mesh);
-
       textureLoader.load(`https://threejs.org/examples/textures/planets/${data.tex}.jpg`, (t: any) => {
         t.encoding = THREE.sRGBEncoding;
         t.anisotropy = engine.current.maxAnisotropy;
         mat.map = t;
         mat.needsUpdate = true;
       });
-
       if (data.isSun) {
         const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: createSunTexture('#ffcc00', 0.8), blending: THREE.AdditiveBlending }));
         glow.scale.set(data.size * 6, data.size * 6, 1);
         mesh.add(glow);
       }
-
       if (data.hasAtmos) {
-        const atmos = new THREE.Mesh(
-          new THREE.SphereGeometry(data.size * 1.04, 64, 64),
-          new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.1, side: THREE.BackSide })
-        );
+        const atmos = new THREE.Mesh(new THREE.SphereGeometry(data.size * 1.04, 64, 64), new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.1, side: THREE.BackSide }));
         mesh.add(atmos);
       }
-
       if (data.hasRing) {
         const ringGeo = new THREE.RingGeometry(data.size * 1.6, data.size * 2.8, 128);
         const ringMat = new THREE.MeshBasicMaterial({ color: 0x887766, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
@@ -193,54 +162,42 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
         ring.rotation.x = Math.PI / 2.3;
         mesh.add(ring);
       }
-
       const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: createLabelTexture(data.name, data.color), transparent: true, depthTest: false }));
       label.scale.set(data.size * 4.5, data.size * 1.1, 1);
       label.position.set(0, data.size * 1.8, 0);
       mesh.add(label);
-
       if (!data.isSun) {
-        const orbit = new THREE.LineLoop(
-          new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0, 0, data.dist, data.dist).getPoints(500)),
-          new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.02 })
-        );
+        const orbit = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0, 0, data.dist, data.dist).getPoints(500)), new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.02 }));
         orbit.rotation.x = Math.PI / 2;
         scene.add(orbit);
       }
       engine.current.planets.set(data.name, { pivot, mesh, data });
     });
-
-    // 卫星：月球
     const earthObj = engine.current.planets.get('地球');
     if (earthObj) {
       const moonData = PLANETS_DATA.Moon;
       const moonPivot = new THREE.Group();
       earthObj.mesh.add(moonPivot); 
-
       const moonMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 1 });
       const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(moonData.size, 32, 32), moonMat);
       moonMesh.position.set(moonData.dist, 0, 0);
       moonMesh.userData = { name: moonData.name };
       moonPivot.add(moonMesh);
-
       textureLoader.load('https://threejs.org/examples/textures/planets/moon.jpg', (t: any) => {
         moonMat.map = t; moonMat.needsUpdate = true;
       });
-
       const moonLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: createLabelTexture(moonData.name, '#ffffff'), transparent: true, depthTest: false }));
       moonLabel.scale.set(moonData.size * 8, moonData.size * 2, 1);
       moonLabel.position.set(0, moonData.size * 2.5, 0);
       moonMesh.add(moonLabel);
       engine.current.planets.set(moonData.name, { pivot: moonPivot, mesh: moonMesh, data: moonData });
     }
-
     const handlePointerDown = (e: any) => {
       if (e.target.closest('button') || e.target.closest('.pointer-events-auto')) return;
       engine.current.controls.isDragging = true;
       const x = e.clientX || e.touches?.[0].clientX;
       const y = e.clientY || e.touches?.[0].clientY;
       engine.current.controls.lastX = x; engine.current.controls.lastY = y;
-      
       const mouseX = (x / window.innerWidth) * 2 - 1;
       const mouseY = -(y / window.innerHeight) * 2 + 1;
       engine.current.raycaster.setFromCamera({ x: mouseX, y: mouseY }, engine.current.camera);
@@ -248,7 +205,6 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
       const hit = hits.find((h: any) => h.object.userData.name);
       if (hit) handleSelect(hit.object.userData.name);
     };
-
     window.addEventListener('resize', () => {
       const w = window.innerWidth, h = window.innerHeight;
       camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -266,27 +222,16 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
       const step = engine.current.controls.targetRadius * 0.15;
       engine.current.controls.targetRadius = Math.max(5, Math.min(2000000, engine.current.controls.targetRadius + (e.deltaY > 0 ? step : -step)));
     }, { passive: false });
-
     const animate = () => {
       const { camera, renderer, scene, planets, targetName, controls, isAutoRotating, vec_targetPos } = engine.current;
-      
       planets.forEach(p => { 
-        // 行星公转 (Revolution around the Sun)
         p.pivot.rotation.y += p.data.speed; 
-        
-        // 行星自转 (Self-rotation on Y-axis)
-        // 为地球设置一个稍快但平滑的自转速度，增强动感
         const rotationSpeed = p.data.name === '地球' ? 0.005 : 0.0015;
         p.mesh.rotation.y += rotationSpeed; 
       });
-
       if (isAutoRotating && !controls.isDragging) controls.theta += 0.0006;
-
       vec_targetPos.set(0, 0, 0);
-      if (targetName && planets.has(targetName)) {
-        planets.get(targetName).mesh.getWorldPosition(vec_targetPos);
-      }
-
+      if (targetName && planets.has(targetName)) { planets.get(targetName).mesh.getWorldPosition(vec_targetPos); }
       controls.radius = THREE.MathUtils.lerp(controls.radius, controls.targetRadius, 0.08);
       const camX = vec_targetPos.x + controls.radius * Math.sin(controls.phi) * Math.cos(controls.theta);
       const camY = vec_targetPos.y + controls.radius * Math.cos(controls.phi);
@@ -306,24 +251,20 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
     if (name) {
       const p = Object.values(PLANETS_DATA).find(x => x.name === name);
       engine.current.controls.targetRadius = p ? p.size * 4 : 500;
-    } else {
-      engine.current.controls.targetRadius = 5000;
-    }
+    } else { engine.current.controls.targetRadius = 5000; }
   };
 
   const current = Object.values(PLANETS_DATA).find(p => p.name === selectedName);
 
   return (
     <div ref={containerRef} className="fixed inset-0 bg-black z-50 overflow-hidden cursor-grab active:cursor-grabbing font-orbitron text-white">
-      
-      {/* 顶部 HUD 装饰 */}
       <div className="absolute top-0 left-0 w-full p-8 flex justify-between items-start pointer-events-none z-[60]">
         <div className="bg-black/20 backdrop-blur-xl px-8 py-4 border border-white/5 rounded-3xl pointer-events-auto shadow-2xl">
             <div className="flex items-center gap-5">
               <Cpu className="text-cyan-400 w-6 h-6 animate-pulse" />
               <div>
-                <h1 className="text-sm font-black tracking-[0.4em] uppercase text-white/90">DEEP SPACE TELEMETRY</h1>
-                <span className="text-[7px] text-cyan-500 font-bold uppercase tracking-[0.6em] block mt-1">Status: Online / Link-ID: {Math.random().toString(16).slice(2,8).toUpperCase()}</span>
+                <h1 className="text-sm font-black tracking-[0.4em] uppercase text-white/90">深空遥测系统</h1>
+                <span className="text-[7px] text-cyan-500 font-bold uppercase tracking-[0.6em] block mt-1">状态: 在线 / 链路 ID: {Math.random().toString(16).slice(2,8).toUpperCase()}</span>
               </div>
             </div>
         </div>
@@ -332,17 +273,12 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
         </button>
       </div>
 
-      {/* 左侧选择器：更通透 */}
       <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-1000 z-[55] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-1.5rem)]'}`}>
         <div className="w-56 h-[60vh] bg-black/30 backdrop-blur-2xl border-y border-r border-white/10 rounded-r-[40px] p-6 flex flex-col pointer-events-auto">
-          <div className="text-[9px] font-black text-white/30 tracking-[0.4em] uppercase mb-8 italic px-2">Archive List</div>
+          <div className="text-[9px] font-black text-white/30 tracking-[0.4em] uppercase mb-8 italic px-2">星图档案</div>
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1">
             {Object.values(PLANETS_DATA).map(p => !p.isMoon && !p.isGalaxy && (
-              <button 
-                key={p.name} 
-                onClick={() => handleSelect(p.name)}
-                className={`w-full text-left px-5 py-3 rounded-2xl text-[10px] font-bold tracking-[0.2em] transition-all uppercase ${selectedName === p.name ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-white/30 hover:text-white hover:bg-white/5'}`}
-              >
+              <button key={p.name} onClick={() => handleSelect(p.name)} className={`w-full text-left px-5 py-3 rounded-2xl text-[10px] font-bold tracking-[0.2em] transition-all uppercase ${selectedName === p.name ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
                 {p.name}
               </button>
             ))}
@@ -353,67 +289,49 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
         </button>
       </div>
 
-      {/* 2. 右下角详情面板：可收起，避让中心视线 */}
       {selectedName && current && (
         <div className={`absolute right-8 bottom-32 w-[340px] z-[50] pointer-events-auto transition-all duration-700 ${isPanelVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'}`}>
            <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[40px] p-10 shadow-2xl relative overflow-hidden group">
-              <button 
-                onClick={() => setIsPanelVisible(false)}
-                className="absolute top-6 right-8 text-white/20 hover:text-white transition-colors"
-              >
+              <button onClick={() => setIsPanelVisible(false)} className="absolute top-6 right-8 text-white/20 hover:text-white transition-colors">
                 <ChevronDown size={20} />
               </button>
-
               <div className="flex items-center gap-3 mb-4">
                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                 <span className="text-[8px] text-emerald-500 font-black uppercase tracking-[0.4em]">Live Telemetry</span>
+                 <span className="text-[8px] text-emerald-500 font-black uppercase tracking-[0.4em]">实时遥测数据</span>
               </div>
-              
               <h2 className="text-4xl font-black italic tracking-tighter mb-4 uppercase" style={{ color: current.color }}>{current.name}</h2>
-              <p className="text-white/60 text-[12px] leading-relaxed font-light italic mb-8 line-clamp-3">
-                {current.desc}
-              </p>
-              
+              <p className="text-white/60 text-[12px] leading-relaxed font-light italic mb-8 line-clamp-3">{current.desc}</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-[7px] text-white/20 font-bold uppercase block mb-1">Type</span>
+                  <span className="text-[7px] text-white/20 font-bold uppercase block mb-1">星体类型</span>
                   <div className="text-white text-[10px] font-bold uppercase">{current.type}</div>
                 </div>
                 <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-[7px] text-white/20 font-bold uppercase block mb-1">Status</span>
-                  <div className="text-emerald-400 text-[10px] font-bold uppercase">{current.status || 'Active'}</div>
+                  <span className="text-[7px] text-white/20 font-bold uppercase block mb-1">系统状态</span>
+                  <div className="text-emerald-400 text-[10px] font-bold uppercase">{current.status || '运行中'}</div>
                 </div>
               </div>
            </div>
         </div>
       )}
 
-      {/* 面板最小化恢复按钮 */}
       {selectedName && !isPanelVisible && (
-        <button 
-          onClick={() => setIsPanelVisible(true)}
-          className="absolute right-12 bottom-36 p-5 bg-cyan-500/10 backdrop-blur-3xl border border-cyan-400/30 rounded-full text-cyan-400 animate-in fade-in zoom-in duration-300 shadow-[0_0_20px_rgba(34,211,238,0.2)]"
-        >
+        <button onClick={() => setIsPanelVisible(true)} className="absolute right-12 bottom-36 p-5 bg-cyan-500/10 backdrop-blur-3xl border border-cyan-400/30 rounded-full text-cyan-400 animate-in fade-in zoom-in duration-300 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
           <BarChart3 size={24} />
         </button>
       )}
 
-      {/* 底部导航中心 */}
       <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-10 bg-white/5 backdrop-blur-2xl px-12 py-5 border border-white/10 rounded-full shadow-2xl z-[60] pointer-events-auto">
           <button onClick={() => setIsAutoRotating(!isAutoRotating)} className={`flex items-center gap-4 transition-all ${isAutoRotating ? 'text-cyan-400' : 'text-white/20 hover:text-white'}`}>
             <RotateCw size={16} className={isAutoRotating ? 'animate-[spin_12s_linear_infinite]' : ''} />
-            <span className="text-[10px] font-black tracking-[0.3em] uppercase italic">Cruise</span>
+            <span className="text-[10px] font-black tracking-[0.3em] uppercase italic">自动巡航</span>
           </button>
           <div className="w-px h-6 bg-white/10"></div>
           <button onClick={() => handleSelect(null)} className={`flex items-center gap-4 transition-all ${!selectedName ? 'text-white' : 'text-white/20 hover:text-white'}`}>
             <Move size={16} />
-            <span className="text-[10px] font-black tracking-[0.3em] uppercase italic">Explore</span>
+            <span className="text-[10px] font-black tracking-[0.3em] uppercase italic">手动探索</span>
           </button>
       </div>
-
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-      `}</style>
     </div>
   );
 };
