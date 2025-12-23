@@ -3,10 +3,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   X, RotateCcw, CheckCircle, Volume2, Award, ArrowRight, Play, 
   Sparkles, Search, Filter, BookOpen, ChevronRight, Bookmark, 
-  Settings2, Music, Languages, Info, History, Trophy, Loader2
+  Settings2, Music, Languages, Info, History, Trophy, Loader2,
+  AlertCircle, DatabaseZap, Database
 } from 'lucide-react';
 import sql from '../lib/neon';
-import { Poem } from '../lib/poems';
+import { Poem, POEM_LIBRARY } from '../lib/poems';
 
 const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [poems, setPoems] = useState<Poem[]>([]);
@@ -19,27 +20,44 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [showLibrary, setShowLibrary] = useState(false);
+  const [dataSource, setDataSource] = useState<'NEON' | 'LOCAL' | null>(null);
 
-  // --- 从 Neon Postgres 获取数据 ---
   const fetchPoems = useCallback(async () => {
     setLoading(true);
-    try {
-      let data;
-      if (categoryFilter === 'all') {
-        data = await sql`SELECT * FROM poems ORDER BY id ASC`;
-      } else {
-        data = await sql`SELECT * FROM poems WHERE category = ${categoryFilter} ORDER BY id ASC`;
+    
+    if (sql) {
+      try {
+        console.log("[Neon] Attempting to fetch from cloud...");
+        let data;
+        if (categoryFilter === 'all') {
+          data = await sql`SELECT * FROM poems ORDER BY id ASC LIMIT 300`;
+        } else {
+          data = await sql`SELECT * FROM poems WHERE category = ${categoryFilter} ORDER BY id ASC LIMIT 300`;
+        }
+        
+        if (data && data.length > 0) {
+          const formattedData = data.map(p => ({
+            ...p,
+            // Neon 的 TEXT[] 会自动转为数组，如果存的是字符串则尝试解析
+            lines: Array.isArray(p.lines) ? p.lines : (typeof p.lines === 'string' ? JSON.parse(p.lines) : []),
+            image: p.image_url || p.image || 'https://picsum.photos/800/600?nature'
+          }));
+          setPoems(formattedData as any);
+          setDataSource('NEON');
+          setCurrentIdx(Math.floor(Math.random() * formattedData.length));
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Neon] DB connection failed or table not found, falling back to local data.", err);
       }
-      
-      if (data) {
-        setPoems(data as any);
-        setCurrentIdx(Math.floor(Math.random() * data.length));
-      }
-    } catch (err) {
-      console.error("Neon DB Fetch Error:", err);
-    } finally {
-      setLoading(false);
     }
+
+    // 回退到本地
+    setPoems(categoryFilter === 'all' ? POEM_LIBRARY : POEM_LIBRARY.filter(p => p.category === categoryFilter));
+    setDataSource('LOCAL');
+    setCurrentIdx(Math.floor(Math.random() * POEM_LIBRARY.length));
+    setLoading(false);
   }, [categoryFilter]);
 
   useEffect(() => {
@@ -110,12 +128,20 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return (
       <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-rose-600 animate-spin mb-4" />
-        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在链接 Neon 云端数据库...</p>
+        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在连接 Neon 数据库...</p>
       </div>
     );
   }
 
-  if (!poem) return null;
+  if (!poem) {
+    return (
+      <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="w-16 h-16 text-stone-200 mb-6" />
+        <h2 className="text-2xl font-bold text-stone-800 mb-2">未发现诗词</h2>
+        <button onClick={() => setCategoryFilter('all')} className="px-8 py-3 bg-rose-600 text-white rounded-2xl font-bold">重试</button>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[60] bg-[#FDFBF7] flex flex-col h-full overflow-hidden select-none font-serif">
@@ -125,11 +151,13 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <Bookmark className="text-white w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base font-black text-slate-800 tracking-tight">中华诗词库 <span className="text-[10px] text-blue-500 font-normal">NEON DB</span></h1>
+            <h1 className="text-base font-black text-slate-800 tracking-tight">中华诗词库</h1>
             <div className="flex items-center gap-1.5 mt-0.5">
-               <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest italic">Serverless / {poems.length} Items</span>
+               <span className={`text-[10px] font-bold uppercase tracking-widest italic ${dataSource === 'NEON' ? 'text-blue-500' : 'text-stone-400'}`}>
+                 {dataSource === 'NEON' ? 'NEON CLOUD' : 'LOCAL CACHE'} / {poems.length} Items
+               </span>
                <div className="w-1 h-1 rounded-full bg-stone-300"></div>
-               <span className="text-[10px] font-bold text-stone-400">PROJECT: {process.env.NETLIFY_SITE_NAME || 'LOCAL'}</span>
+               <span className="text-[10px] font-bold text-stone-400">DATA_SYNC: {sql ? 'READY' : 'OFFLINE'}</span>
             </div>
           </div>
         </div>
@@ -152,14 +180,22 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                <Filter size={14} /> 题材分类
              </h3>
              <div className="grid grid-cols-1 gap-2">
-               {['all', 'nature', 'homesick', 'friendship', 'ambition', 'reason', 'festive'].map(cat => (
+               {[
+                 { id: 'all', label: '全部诗篇' },
+                 { id: 'nature', label: '写景咏物' },
+                 { id: 'homesick', label: '羁旅思乡' },
+                 { id: 'friendship', label: '友人送别' },
+                 { id: 'ambition', label: '壮志抱负' },
+                 { id: 'reason', label: '哲理感悟' },
+                 { id: 'festive', label: '节日节令' }
+               ].map(cat => (
                  <button 
-                  key={cat} 
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`group px-5 py-3 rounded-2xl text-sm transition-all flex justify-between items-center ${categoryFilter === cat ? 'bg-rose-600 text-white shadow-xl shadow-rose-200 font-bold' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-100'}`}
+                  key={cat.id} 
+                  onClick={() => setCategoryFilter(cat.id)}
+                  className={`group px-5 py-3 rounded-2xl text-sm transition-all flex justify-between items-center ${categoryFilter === cat.id ? 'bg-rose-600 text-white shadow-xl shadow-rose-200 font-bold' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-100'}`}
                  >
-                   <span className="capitalize">{cat === 'all' ? '全部' : cat}</span>
-                   <ChevronRight size={14} className={categoryFilter === cat ? 'opacity-100' : 'opacity-20 group-hover:opacity-100'} />
+                   <span>{cat.label}</span>
+                   <ChevronRight size={14} className={categoryFilter === cat.id ? 'opacity-100' : 'opacity-20 group-hover:opacity-100'} />
                  </button>
                ))}
              </div>
@@ -182,8 +218,8 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <div className="flex-1 bg-white/40 border-4 border-dashed border-stone-200 rounded-[3rem] p-6 sm:p-10 flex flex-col justify-center items-center gap-6 overflow-y-auto no-scrollbar relative">
             {lines.length === 0 && !isSuccess && (
               <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20 pointer-events-none text-center">
-                 <Sparkles size={100} className="text-stone-200 mb-4 mx-auto" />
-                 <p className="text-stone-400 font-bold italic tracking-widest text-lg">Neon 数据库已同步<br/>请构建本节诗句</p>
+                 {dataSource === 'NEON' ? <DatabaseZap size={100} className="text-blue-200 mb-4 mx-auto" /> : <Sparkles size={100} className="text-stone-200 mb-4 mx-auto" />}
+                 <p className="text-stone-400 font-bold italic tracking-widest text-lg">数据库连接成功<br/>请点选诗句重塑华章</p>
               </div>
             )}
             <div className="w-full max-w-2xl flex flex-col gap-4">
@@ -218,8 +254,8 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           {isSuccess && (
             <div className="fixed inset-0 z-[100] bg-[#FDFBF7]/98 backdrop-blur-3xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-700">
                <div className="w-full max-w-3xl flex flex-col items-center">
-                 <div className="relative w-full h-48 sm:h-80 rounded-[3rem] overflow-hidden mb-8 shadow-2xl border-4 border-white">
-                   <img src={poem.image_url || poem.image} className="w-full h-full object-cover" alt="意境" />
+                 <div className="relative w-full h-48 sm:h-80 rounded-[3rem] overflow-hidden mb-8 shadow-2xl border-4 border-white bg-stone-200">
+                   <img src={poem.image_url || poem.image} className="w-full h-full object-cover" alt="意境" onError={(e) => (e.currentTarget.style.display = 'none')} />
                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
                      <div className="text-white text-3xl sm:text-5xl font-black tracking-tight mb-2">{poem.title}</div>
                      <div className="text-white/80 text-xl font-bold">{poem.dynasty} · {poem.author}</div>
@@ -247,8 +283,8 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="flex items-center gap-5">
                    <div className="p-4 bg-stone-900 rounded-[1.5rem] text-white shadow-2xl"><BookOpen size={40}/></div>
                    <div>
-                     <h2 className="text-3xl sm:text-5xl font-black text-stone-900 tracking-tighter">云端诗藏百科</h2>
-                     <p className="text-[10px] font-black text-stone-400 uppercase tracking-[0.4em] mt-2 italic">Database Sync Active / {poems.length} Items</p>
+                     <h2 className="text-3xl sm:text-5xl font-black text-stone-900 tracking-tighter">古诗百科辞典</h2>
+                     <p className="text-[10px] font-black text-stone-400 uppercase tracking-[0.4em] mt-2 italic">Database Source: {dataSource} / {poems.length} Items</p>
                    </div>
                 </div>
                 <button onClick={() => setShowLibrary(false)} className="p-4 bg-white border border-stone-200 rounded-full text-slate-400 hover:text-slate-900 shadow-sm transition-all">
@@ -257,7 +293,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
              </div>
              <div className="relative mb-10 shrink-0">
                 <Search className="absolute left-8 top-1/2 -translate-y-1/2 text-stone-300" size={28} />
-                <input type="text" placeholder="从 300 首云端诗藏中检索..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white border-2 border-stone-100 rounded-[2.5rem] py-6 pl-20 pr-10 text-xl font-bold shadow-sm focus:outline-none focus:border-rose-500/30 transition-all placeholder:text-stone-200" />
+                <input type="text" placeholder="从云端诗藏中检索..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white border-2 border-stone-100 rounded-[2.5rem] py-6 pl-20 pr-10 text-xl font-bold shadow-sm focus:outline-none focus:border-rose-500/30 transition-all placeholder:text-stone-200" />
              </div>
              <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
