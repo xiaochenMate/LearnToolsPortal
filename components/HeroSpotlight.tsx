@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Play, ShieldCheck, Activity, Target } from 'lucide-react';
+import { Play, ShieldCheck } from 'lucide-react';
 import { AppItem } from '../types';
 
 interface HeroSpotlightProps {
@@ -49,11 +49,6 @@ const HeroSpotlight: React.FC<HeroSpotlightProps> = ({ item, onRun }) => {
               <Play className="w-5 h-5 fill-current group-hover/btn:translate-x-1 transition-transform" />
               BOOT_MODULE
             </button>
-            
-            <div className="flex flex-col">
-              <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Access_Point</span>
-              <span className="text-sm text-emerald-500 font-mono tracking-widest italic">{item.author}</span>
-            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { AppItem } from '../types';
-import { Play, Zap } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 interface AppCardProps {
   item: AppItem;
@@ -53,15 +54,10 @@ const AppCard: React.FC<AppCardProps> = ({ item, onClick }) => {
           {/* Tech decoration lines */}
           <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-slate-700/50 rounded-tr-xl pointer-events-none"></div>
 
-          <div className="flex justify-between items-start mb-2">
+          <div className="flex justify-between items-start mb-3">
               <h3 className="text-lg font-bold text-slate-100 tech-font group-hover:text-yellow-400 transition-colors truncate">
               {item.title}
               </h3>
-          </div>
-          
-          <div className="flex items-center gap-2 mb-3">
-             <Zap className="w-3 h-3 text-yellow-500" />
-             <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">{item.author}</p>
           </div>
           
           <p className="text-sm text-slate-400 line-clamp-2 mb-4 flex-1 font-light leading-relaxed">

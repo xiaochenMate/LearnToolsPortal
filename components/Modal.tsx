@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
-import { X, Heart, Share2, Info, User, PlayCircle, Cpu } from 'lucide-react';
+import { X, Heart, Share2, Info, PlayCircle, Cpu } from 'lucide-react';
 import { AppItem } from '../types';
 
 interface ModalProps {
@@ -63,9 +64,6 @@ const Modal: React.FC<ModalProps> = ({ item, onClose, onRun }) => {
                 <span className="text-cyan-400 text-xs font-mono animate-pulse">● SYSTEM ONLINE</span>
              </div>
              <h2 className="text-4xl font-bold mb-2 tech-font tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">{item.title}</h2>
-             <p className="text-slate-300 flex items-center gap-2 font-mono text-sm">
-               <User className="w-4 h-4 text-cyan-500" /> CREATOR: {item.author}
-             </p>
            </div>
         </div>
 

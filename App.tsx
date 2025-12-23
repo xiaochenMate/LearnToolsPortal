@@ -10,8 +10,10 @@ import FoodChainApp from './components/FoodChainApp';
 import CharacterApp from './components/CharacterApp';
 import ClockApp from './components/ClockApp';
 import PoetryApp from './components/PoetryApp';
-import WaveApp from './components/WaveApp'; // 新增导入
-import MathSprintApp from './components/MathSprintApp'; // 新增导入
+import WaveApp from './components/WaveApp';
+import MathSprintApp from './components/MathSprintApp';
+import HistorySortingApp from './components/HistorySortingApp';
+import BrainTeaseApp from './components/BrainTeaseApp'; // 新增导入
 import HeroSpotlight from './components/HeroSpotlight';
 import ActivityTicker from './components/ActivityTicker';
 import AuthUI from './components/AuthUI';
@@ -98,16 +100,17 @@ const App: React.FC = () => {
     );
   }
 
-  // 模块渲染分发器
   const renderApp = () => {
     switch (runningAppId) {
       case 'e1': return <Earth3D onClose={() => setRunningAppId(null)} />;
       case 'e2': return <FoodChainApp onClose={() => setRunningAppId(null)} />;
-      case 'e3': return <WaveApp onClose={() => setRunningAppId(null)} />; // 物理模拟器接入
+      case 'e3': return <WaveApp onClose={() => setRunningAppId(null)} />;
       case 'e4': return <CharacterApp onClose={() => setRunningAppId(null)} />;
       case 'e5': return <PoetryApp onClose={() => setRunningAppId(null)} />;
+      case 'e6': return <HistorySortingApp onClose={() => setRunningAppId(null)} />;
       case 'e7': return <ClockApp onClose={() => setRunningAppId(null)} />;
-      case 'e18': return <MathSprintApp onClose={() => setRunningAppId(null)} />; // 数学挑战接入
+      case 'e18': return <MathSprintApp onClose={() => setRunningAppId(null)} />;
+      case 'ent3': return <BrainTeaseApp onClose={() => setRunningAppId(null)} />; // 脑筋急转弯
       default: return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center">
           <Terminal className="w-16 h-16 text-emerald-500 mb-4 opacity-50" />
@@ -160,7 +163,7 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-6 py-10">
         {!searchQuery && activeCategory === 'ALL' && allModules.length > 0 && (
-          <HeroSpotlight item={allModules.find(m => m.id === 'e7') || allModules[0]} onRun={handleRunApp} />
+          <HeroSpotlight item={allModules.find(m => m.id === 'ent3') || allModules[0]} onRun={handleRunApp} />
         )}
 
         <div className="flex items-center gap-4 mb-10 border-b border-slate-900 pb-6">
