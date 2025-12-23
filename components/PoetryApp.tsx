@@ -1,66 +1,69 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { X, RotateCcw, CheckCircle, Volume2, Award, ArrowRight, Play, Info, Sparkles } from 'lucide-react';
-
-interface Poem {
-  id: string;
-  title: string;
-  author: string;
-  dynasty: string;
-  lines: string[];
-  meaning: string;
-  image: string;
-}
-
-const POEMS: Poem[] = [
-  {
-    id: 'p1',
-    title: '静夜思',
-    author: '李白',
-    dynasty: '唐',
-    lines: ['床前明月光', '疑是地上霜', '举头望明月', '低头思故乡'],
-    meaning: '这首诗表达了诗人深夜看到明月时触发的浓浓思乡之情。',
-    image: 'https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?w=800&q=80'
-  },
-  {
-    id: 'p2',
-    title: '咏鹅',
-    author: '骆宾王',
-    dynasty: '唐',
-    lines: ['鹅鹅鹅', '曲项向天歌', '白毛浮绿水', '红掌拨清波'],
-    meaning: '生动地描绘了鹅戏水时的优美姿态，色彩对比鲜明。',
-    image: 'https://images.unsplash.com/photo-1549114848-372070371424?w=800&q=80'
-  },
-  {
-    id: 'p3',
-    title: '登鹳雀楼',
-    author: '王之涣',
-    dynasty: '唐',
-    lines: ['白日依山尽', '黄河入海流', '欲穷千里目', '更上一层楼'],
-    meaning: '通过登楼远眺，表达了积极向上、追求更高境界的豪情。',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80'
-  }
-];
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  X, RotateCcw, CheckCircle, Volume2, Award, ArrowRight, Play, 
+  Sparkles, Search, Filter, BookOpen, ChevronRight, Bookmark, 
+  Settings2, Music, Languages, Info, History, Trophy, Loader2
+} from 'lucide-react';
+import sql from '../lib/neon';
+import { Poem } from '../lib/poems';
 
 const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [poems, setPoems] = useState<Poem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [lines, setLines] = useState<string[]>([]);
   const [shuffled, setShuffled] = useState<string[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState(() => Number(localStorage.getItem('poem_score') || 0));
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+  const [showLibrary, setShowLibrary] = useState(false);
 
-  const poem = POEMS[currentIdx];
-
-  const initPoem = useCallback((idx: number) => {
-    const p = POEMS[idx];
-    setLines([]);
-    setShuffled([...p.lines].sort(() => Math.random() - 0.5));
-    setIsSuccess(false);
-  }, []);
+  // --- 从 Neon Postgres 获取数据 ---
+  const fetchPoems = useCallback(async () => {
+    setLoading(true);
+    try {
+      let data;
+      if (categoryFilter === 'all') {
+        data = await sql`SELECT * FROM poems ORDER BY id ASC`;
+      } else {
+        data = await sql`SELECT * FROM poems WHERE category = ${categoryFilter} ORDER BY id ASC`;
+      }
+      
+      if (data) {
+        setPoems(data as any);
+        setCurrentIdx(Math.floor(Math.random() * data.length));
+      }
+    } catch (err) {
+      console.error("Neon DB Fetch Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [categoryFilter]);
 
   useEffect(() => {
-    initPoem(currentIdx);
-  }, [currentIdx, initPoem]);
+    fetchPoems();
+  }, [fetchPoems]);
+
+  const poem = useMemo(() => {
+    if (poems.length === 0) return null;
+    const pool = poems.filter(p => 
+      p.title.includes(searchQuery) || p.author.includes(searchQuery)
+    );
+    return pool[currentIdx % pool.length] || poems[0];
+  }, [poems, currentIdx, searchQuery]);
+
+  const initPoem = useCallback(() => {
+    if (!poem) return;
+    setLines([]);
+    setShuffled([...poem.lines].sort(() => Math.random() - 0.5));
+    setIsSuccess(false);
+  }, [poem]);
+
+  useEffect(() => {
+    initPoem();
+  }, [initPoem]);
 
   const handlePick = (line: string) => {
     if (isSuccess) return;
@@ -75,121 +78,210 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   const handleVerify = () => {
+    if (!poem) return;
     if (lines.join('') === poem.lines.join('')) {
       setIsSuccess(true);
-      setScore(s => s + 1);
+      const newScore = score + 1;
+      setScore(newScore);
+      localStorage.setItem('poem_score', String(newScore));
+      playTTS(`${poem.title}, ${poem.author}, ${poem.lines.join(', ')}`);
     } else {
       alert('顺序不对哦，再仔细思考一下！');
-      // 重置到当前题目
-      initPoem(currentIdx);
+      initPoem();
     }
   };
 
-  const speakPoem = () => {
+  const playTTS = (text: string) => {
     if ('speechSynthesis' in window) {
-      const msg = new SpeechSynthesisUtterance(`${poem.title}, ${poem.author}, ${poem.lines.join(', ')}`);
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(text);
       msg.lang = 'zh-CN';
+      msg.rate = 0.8;
       window.speechSynthesis.speak(msg);
     }
   };
 
+  const handleNext = () => {
+    setCurrentIdx(Math.floor(Math.random() * poems.length));
+    setIsSuccess(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center">
+        <Loader2 className="w-12 h-12 text-rose-600 animate-spin mb-4" />
+        <p className="text-stone-400 font-bold tracking-widest italic animate-pulse">正在链接 Neon 云端数据库...</p>
+      </div>
+    );
+  }
+
+  if (!poem) return null;
+
   return (
-    <div className="fixed inset-0 z-50 bg-[#FDFBF7] flex flex-col font-serif">
-      <header className="h-16 flex items-center justify-between px-8 border-b bg-white">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-100 rounded-lg"><Play className="w-4 h-4 text-amber-700" /></div>
-          <h1 className="text-xl font-bold text-slate-800">古诗排序挑战</h1>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 rounded-full border border-amber-200">
-            <Award size={16} className="text-amber-600" />
-            <span className="text-sm font-bold text-amber-800">{score}</span>
+    <div className="fixed inset-0 z-[60] bg-[#FDFBF7] flex flex-col h-full overflow-hidden select-none font-serif">
+      <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-stone-200 shrink-0 z-50">
+        <div className="flex items-center gap-4">
+          <div className="p-2.5 bg-rose-600 rounded-xl shadow-lg shadow-rose-100 flex items-center justify-center">
+            <Bookmark className="text-white w-5 h-5" />
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-800 transition-colors"><X size={24}/></button>
+          <div>
+            <h1 className="text-base font-black text-slate-800 tracking-tight">中华诗词库 <span className="text-[10px] text-blue-500 font-normal">NEON DB</span></h1>
+            <div className="flex items-center gap-1.5 mt-0.5">
+               <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest italic">Serverless / {poems.length} Items</span>
+               <div className="w-1 h-1 rounded-full bg-stone-300"></div>
+               <span className="text-[10px] font-bold text-stone-400">PROJECT: {process.env.NETLIFY_SITE_NAME || 'LOCAL'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 rounded-xl border border-rose-100 shadow-sm">
+            <Trophy size={16} className="text-rose-600" />
+            <span className="text-xs font-black text-rose-800">{score}</span>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors">
+            <X size={24}/>
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col lg:flex-row p-6 lg:p-12 gap-10 max-w-7xl mx-auto w-full overflow-hidden">
-        {/* 左侧：题库与状态 */}
-        <aside className="lg:w-80 flex flex-col gap-6">
-          <div className="bg-white p-8 rounded-3xl border shadow-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform"><Sparkles size={64}/></div>
-            <h2 className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 italic">Current Selection</h2>
-            <div className="text-4xl font-bold mb-1">{poem.title}</div>
-            <div className="text-slate-500 mb-6">{poem.dynasty} · {poem.author}</div>
-            <div className="p-4 bg-slate-50 rounded-2xl text-sm leading-relaxed text-slate-600 italic border border-slate-100">
-              {poem.meaning}
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <aside className="hidden lg:flex w-80 flex-col p-8 border-r border-stone-100 overflow-y-auto no-scrollbar bg-stone-50/30">
+          <section className="mb-10">
+             <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+               <Filter size={14} /> 题材分类
+             </h3>
+             <div className="grid grid-cols-1 gap-2">
+               {['all', 'nature', 'homesick', 'friendship', 'ambition', 'reason', 'festive'].map(cat => (
+                 <button 
+                  key={cat} 
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`group px-5 py-3 rounded-2xl text-sm transition-all flex justify-between items-center ${categoryFilter === cat ? 'bg-rose-600 text-white shadow-xl shadow-rose-200 font-bold' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-100'}`}
+                 >
+                   <span className="capitalize">{cat === 'all' ? '全部' : cat}</span>
+                   <ChevronRight size={14} className={categoryFilter === cat ? 'opacity-100' : 'opacity-20 group-hover:opacity-100'} />
+                 </button>
+               ))}
+             </div>
+          </section>
+
+          <section className="mt-auto">
+             <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-[0.05] rotate-12"><History size={64}/></div>
+                <h2 className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-3 italic">学而时习之</h2>
+                <div className="text-2xl font-black text-stone-800 mb-1">{poem.title}</div>
+                <div className="text-stone-400 text-xs mb-4">{poem.dynasty} · {poem.author}</div>
+                <div className="p-4 bg-stone-50 rounded-2xl text-[11px] leading-relaxed text-stone-500 italic border border-stone-100">
+                  {poem.meaning}
+                </div>
+             </div>
+          </section>
+        </aside>
+
+        <div className="flex-1 flex flex-col p-4 sm:p-10 gap-6 relative overflow-hidden">
+          <div className="flex-1 bg-white/40 border-4 border-dashed border-stone-200 rounded-[3rem] p-6 sm:p-10 flex flex-col justify-center items-center gap-6 overflow-y-auto no-scrollbar relative">
+            {lines.length === 0 && !isSuccess && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20 pointer-events-none text-center">
+                 <Sparkles size={100} className="text-stone-200 mb-4 mx-auto" />
+                 <p className="text-stone-400 font-bold italic tracking-widest text-lg">Neon 数据库已同步<br/>请构建本节诗句</p>
+              </div>
+            )}
+            <div className="w-full max-w-2xl flex flex-col gap-4">
+              {lines.map((line, idx) => (
+                <button key={idx} onClick={() => handleRemove(line)} className={`w-full px-8 py-5 bg-white border-2 border-stone-200 rounded-[2rem] text-xl sm:text-3xl font-black text-stone-800 shadow-sm transition-all hover:scale-[1.02] hover:border-rose-300 ${isSuccess ? 'border-rose-500 bg-rose-50 text-rose-900 shadow-rose-100' : ''}`}>
+                  {line}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="mt-auto grid grid-cols-1 gap-2">
-            <button onClick={() => setCurrentIdx((currentIdx + 1) % POEMS.length)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-slate-800 transition-all">
-              换一首诗 <ArrowRight size={18}/>
-            </button>
-          </div>
-        </aside>
-
-        {/* 右侧：交互区 */}
-        <div className="flex-1 flex flex-col gap-8 relative">
-          {/* 排序槽位 */}
-          <div className="flex-1 bg-white/50 border-4 border-dashed border-slate-100 rounded-[40px] p-8 flex flex-col justify-center items-center gap-4 transition-all overflow-y-auto">
-            {lines.length === 0 && !isSuccess && <div className="text-slate-300 text-xl italic font-light">点击下方诗句进行排序...</div>}
-            {lines.map((line, idx) => (
-              <button 
-                key={idx} 
-                onClick={() => handleRemove(line)}
-                className={`px-12 py-4 bg-white border-2 border-slate-100 rounded-2xl text-2xl font-bold shadow-sm hover:border-amber-400 hover:text-amber-600 transition-all animate-in slide-in-from-bottom-2 duration-300 ${isSuccess ? 'border-amber-500 bg-amber-50' : ''}`}
-              >
-                {line}
-              </button>
-            ))}
-          </div>
-
-          {/* 候选诗句 */}
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 shrink-0">
             {shuffled.map((line, idx) => (
-              <button 
-                key={idx} 
-                onClick={() => handlePick(line)}
-                className="px-8 py-3 bg-white border border-slate-200 rounded-xl text-lg font-medium text-slate-600 hover:border-amber-500 hover:text-amber-700 shadow-sm active:scale-95 transition-all"
-              >
+              <button key={idx} onClick={() => handlePick(line)} className="px-6 sm:px-10 py-3 sm:py-4 bg-white border-2 border-stone-100 rounded-2xl text-lg sm:text-xl font-bold text-stone-600 hover:border-rose-500 hover:text-rose-700 shadow-sm active:scale-90 transition-all">
                 {line}
               </button>
             ))}
           </div>
 
-          {/* 操作按钮 */}
-          <div className="flex justify-center gap-4">
-            <button onClick={() => initPoem(currentIdx)} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50 transition-all">
-              <RotateCcw size={18}/> 重置
+          <div className="flex justify-center gap-4 shrink-0">
+            <button onClick={initPoem} className="px-6 py-4 bg-stone-100 border border-stone-200 text-stone-500 rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-stone-200 transition-all active:scale-95">
+              <RotateCcw size={18} /> 重置
             </button>
-            <button 
-              onClick={handleVerify}
-              disabled={lines.length !== poem.lines.length}
-              className={`px-12 py-3 rounded-xl font-black text-lg flex items-center gap-3 transition-all ${lines.length === poem.lines.length ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
-            >
-              <CheckCircle size={20}/> 验证顺序
+            <button onClick={() => setShowLibrary(true)} className="px-6 py-4 bg-stone-900 text-white rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-black transition-all active:scale-95 shadow-xl">
+              <BookOpen size={18} /> 查阅百科
+            </button>
+            <button onClick={handleVerify} disabled={lines.length !== poem.lines.length} className={`px-10 py-4 rounded-2xl font-black text-lg flex items-center gap-3 transition-all ${lines.length === poem.lines.length ? 'bg-rose-600 text-white shadow-xl shadow-rose-200 hover:bg-rose-500 scale-105' : 'bg-stone-200 text-stone-400 cursor-not-allowed'}`}>
+              <CheckCircle size={22}/> 完卷呈阅
             </button>
           </div>
 
-          {/* 成功图层 */}
           {isSuccess && (
-            <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-md rounded-[40px] flex flex-col items-center justify-center p-10 animate-in fade-in duration-500">
-               <div className="w-full h-48 rounded-3xl overflow-hidden mb-8 shadow-2xl">
-                 <img src={poem.image} className="w-full h-full object-cover" alt="意境图" />
-               </div>
-               <div className="text-center mb-8">
-                 <h3 className="text-2xl font-bold text-amber-700 mb-2">恭喜！完全正确</h3>
-                 <p className="text-slate-500">感受这首诗的意境吧</p>
-               </div>
-               <div className="flex gap-4">
-                 <button onClick={speakPoem} className="px-8 py-4 bg-blue-500 text-white rounded-2xl font-bold flex items-center gap-3 shadow-lg shadow-blue-500/20"><Volume2 size={20}/> 朗读全诗</button>
-                 <button onClick={() => setCurrentIdx((currentIdx + 1) % POEMS.length)} className="px-8 py-4 bg-amber-500 text-white rounded-2xl font-bold flex items-center gap-3 shadow-lg shadow-amber-500/20">下一首诗 <ArrowRight size={20}/></button>
+            <div className="fixed inset-0 z-[100] bg-[#FDFBF7]/98 backdrop-blur-3xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-700">
+               <div className="w-full max-w-3xl flex flex-col items-center">
+                 <div className="relative w-full h-48 sm:h-80 rounded-[3rem] overflow-hidden mb-8 shadow-2xl border-4 border-white">
+                   <img src={poem.image_url || poem.image} className="w-full h-full object-cover" alt="意境" />
+                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
+                     <div className="text-white text-3xl sm:text-5xl font-black tracking-tight mb-2">{poem.title}</div>
+                     <div className="text-white/80 text-xl font-bold">{poem.dynasty} · {poem.author}</div>
+                   </div>
+                 </div>
+                 <p className="text-stone-800 text-lg sm:text-2xl font-bold leading-relaxed mb-10 italic text-center">“{poem.meaning}”</p>
+                 <div className="flex gap-4 w-full max-w-md">
+                   <button onClick={() => playTTS(`${poem.title}, ${poem.author}, ${poem.lines.join(', ')}`)} className="flex-1 py-4 sm:py-5 bg-stone-900 text-white rounded-[2rem] font-black flex items-center justify-center gap-3 shadow-xl">
+                     <Volume2 size={24}/> 聆听吟诵
+                   </button>
+                   <button onClick={handleNext} className="flex-1 py-4 sm:py-5 bg-rose-600 text-white rounded-[2rem] font-black flex items-center justify-center gap-3 shadow-xl hover:bg-rose-500 transition-all active:scale-95">
+                     下一挑战 <ArrowRight size={24}/>
+                   </button>
+                 </div>
                </div>
             </div>
           )}
         </div>
       </main>
+
+      {showLibrary && (
+        <div className="fixed inset-0 z-[110] bg-[#FDFBF7] flex flex-col p-6 sm:p-12 animate-in slide-in-from-right duration-500 overflow-hidden">
+           <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
+             <div className="flex justify-between items-center mb-10 shrink-0">
+                <div className="flex items-center gap-5">
+                   <div className="p-4 bg-stone-900 rounded-[1.5rem] text-white shadow-2xl"><BookOpen size={40}/></div>
+                   <div>
+                     <h2 className="text-3xl sm:text-5xl font-black text-stone-900 tracking-tighter">云端诗藏百科</h2>
+                     <p className="text-[10px] font-black text-stone-400 uppercase tracking-[0.4em] mt-2 italic">Database Sync Active / {poems.length} Items</p>
+                   </div>
+                </div>
+                <button onClick={() => setShowLibrary(false)} className="p-4 bg-white border border-stone-200 rounded-full text-slate-400 hover:text-slate-900 shadow-sm transition-all">
+                  <X size={32} />
+                </button>
+             </div>
+             <div className="relative mb-10 shrink-0">
+                <Search className="absolute left-8 top-1/2 -translate-y-1/2 text-stone-300" size={28} />
+                <input type="text" placeholder="从 300 首云端诗藏中检索..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white border-2 border-stone-100 rounded-[2.5rem] py-6 pl-20 pr-10 text-xl font-bold shadow-sm focus:outline-none focus:border-rose-500/30 transition-all placeholder:text-stone-200" />
+             </div>
+             <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                   {poems.filter(p => p.title.includes(searchQuery) || p.author.includes(searchQuery)).map((p, idx) => (
+                      <div key={idx} className="bg-white p-8 rounded-[3rem] border border-stone-100 hover:border-rose-200 transition-all shadow-sm group relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-2 h-full bg-rose-600/10 group-hover:bg-rose-600 transition-colors"></div>
+                        <div className="flex justify-between items-start mb-6">
+                           <div>
+                             <div className="text-3xl font-black text-stone-900 mb-1">{p.title}</div>
+                             <div className="text-xs font-bold text-rose-500 uppercase tracking-widest">{p.dynasty} · {p.author}</div>
+                           </div>
+                           <button onClick={() => playTTS(p.lines.join('，'))} className="p-3 bg-stone-50 text-stone-300 rounded-2xl hover:bg-rose-600 hover:text-white transition-all"><Volume2 size={20} /></button>
+                        </div>
+                        <div className="space-y-1 mb-6">
+                           {p.lines.map(line => <p key={line} className="text-stone-600 text-sm font-medium">{line}</p>)}
+                        </div>
+                        <p className="text-stone-400 text-[11px] leading-relaxed italic border-t border-stone-50 pt-4 line-clamp-2">{p.meaning}</p>
+                      </div>
+                   ))}
+                </div>
+             </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

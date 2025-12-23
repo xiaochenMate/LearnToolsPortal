@@ -9,7 +9,9 @@ import Earth3D from './components/Earth3D';
 import FoodChainApp from './components/FoodChainApp';
 import CharacterApp from './components/CharacterApp';
 import ClockApp from './components/ClockApp';
-import PoetryApp from './components/PoetryApp'; // 新增导入
+import PoetryApp from './components/PoetryApp';
+import WaveApp from './components/WaveApp'; // 新增导入
+import MathSprintApp from './components/MathSprintApp'; // 新增导入
 import HeroSpotlight from './components/HeroSpotlight';
 import ActivityTicker from './components/ActivityTicker';
 import AuthUI from './components/AuthUI';
@@ -92,28 +94,32 @@ const App: React.FC = () => {
         <div className="mt-4 w-48 h-1 bg-slate-900 rounded-full overflow-hidden">
           <div className="h-full bg-emerald-500 animate-[loading_1.2s_linear_infinite]"></div>
         </div>
-        <style>{`@keyframes loading { 0% { width: 0%; } 100% { width: 100%; } }`}</style>
       </div>
     );
   }
 
-  // 应用分发逻辑
-  if (runningAppId === 'e1') return <Earth3D onClose={() => setRunningAppId(null)} />;
-  if (runningAppId === 'e2') return <FoodChainApp onClose={() => setRunningAppId(null)} />;
-  if (runningAppId === 'e4') return <CharacterApp onClose={() => setRunningAppId(null)} />;
-  if (runningAppId === 'e7') return <ClockApp onClose={() => setRunningAppId(null)} />;
-  if (runningAppId === 'e5') return <PoetryApp onClose={() => setRunningAppId(null)} />; // 挂载古诗模块
+  // 模块渲染分发器
+  const renderApp = () => {
+    switch (runningAppId) {
+      case 'e1': return <Earth3D onClose={() => setRunningAppId(null)} />;
+      case 'e2': return <FoodChainApp onClose={() => setRunningAppId(null)} />;
+      case 'e3': return <WaveApp onClose={() => setRunningAppId(null)} />; // 物理模拟器接入
+      case 'e4': return <CharacterApp onClose={() => setRunningAppId(null)} />;
+      case 'e5': return <PoetryApp onClose={() => setRunningAppId(null)} />;
+      case 'e7': return <ClockApp onClose={() => setRunningAppId(null)} />;
+      case 'e18': return <MathSprintApp onClose={() => setRunningAppId(null)} />; // 数学挑战接入
+      default: return (
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center">
+          <Terminal className="w-16 h-16 text-emerald-500 mb-4 opacity-50" />
+          <h1 className="text-2xl font-bold text-white mb-2 tech-font uppercase">STANDBY_MODE</h1>
+          <p className="text-slate-500 mb-8 font-mono text-xs tracking-widest">MODULE: {runningAppId} / IN_DEVELOPMENT</p>
+          <button onClick={() => setRunningAppId(null)} className="px-8 py-3 border border-red-500/50 text-red-500 hover:bg-red-600 hover:text-white transition-all font-black tracking-[0.2em] uppercase italic">Abort_Process</button>
+        </div>
+      );
+    }
+  };
 
-  if (runningAppId) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center">
-        <Terminal className="w-16 h-16 text-emerald-500 mb-4 opacity-50" />
-        <h1 className="text-2xl font-bold text-white mb-2 tech-font uppercase">STANDBY_MODE</h1>
-        <p className="text-slate-500 mb-8 font-mono text-xs tracking-widest">MODULE: {runningAppId}</p>
-        <button onClick={() => setRunningAppId(null)} className="px-8 py-3 border border-red-500/50 text-red-500 hover:bg-red-600 hover:text-white transition-all font-black tracking-[0.2em] uppercase italic">Abort_Process</button>
-      </div>
-    );
-  }
+  if (runningAppId) return renderApp();
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-300">
@@ -166,14 +172,6 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredModules.map(item => <AppCard key={item.id} item={item} onClick={setSelectedItem} />)}
         </div>
-
-        {filteredModules.length === 0 && !isLoading && (
-          <div className="py-40 text-center border border-dashed border-slate-800 rounded-2xl">
-            <Terminal className="mx-auto text-slate-800 w-12 h-12 mb-4" />
-            <h3 className="text-white font-black tech-font uppercase">Dataset_Empty</h3>
-            <p className="text-slate-600 font-mono text-xs mt-2 italic">No modules matched the current protocol filters.</p>
-          </div>
-        )}
       </main>
 
       <ActivityTicker />

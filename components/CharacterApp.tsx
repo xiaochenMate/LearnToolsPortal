@@ -1,431 +1,390 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { X, Volume2, RotateCcw, Lightbulb, BookOpen, ChevronRight, Eraser, Info } from 'lucide-react';
 
-// --- Types ---
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  X, Volume2, RotateCcw, Lightbulb, BookOpen, ChevronRight, 
+  Info, Sparkles, Search, Languages, Trophy, BarChart3, Star, Target,
+  LayoutGrid, Book, Filter, ChevronDown, Award, SearchCode, Bookmark
+} from 'lucide-react';
+
+// --- 类型定义 ---
 interface CharacterDetail {
-  candidate: string;
-  result: string;
-  pinyin: string;
-  meaning: string;
-  examples: string[];
+  candidate: string; 
+  result: string;    
+  pinyin: string;    
+  meaning: string;   
+  examples: string[]; 
 }
 
-interface QuestionSet {
-  id: number;
+interface RadicalGroup {
   radical: string;
-  radicalName: string;
-  radicalPinyin: string;
-  meaningHint: string;
-  options: string[];
-  results: Record<string, CharacterDetail>;
+  name: string;
+  pinyin: string;
+  hint: string;
+  level: '启蒙' | '进阶' | '挑战';
+  characters: CharacterDetail[];
 }
 
-// --- Question Bank ---
-const QUESTIONS: QuestionSet[] = [
+// --- 核心海量字库数据 (大幅扩充) ---
+const CHARACTER_DICTIONARY: RadicalGroup[] = [
   {
-    id: 1, radical: '氵', radicalName: '三点水', radicalPinyin: 'sān diǎn shuǐ', meaningHint: '常与水、液体有关',
-    options: ['工', '羊', '青'],
-    results: {
-      '工': { candidate: '工', result: '江', pinyin: 'jiāng', meaning: '江河，大河的通称。', examples: ['江河', '长江'] },
-      '羊': { candidate: '羊', result: '洋', pinyin: 'yáng', meaning: '比海更大的水域，宏大。', examples: ['海洋', '洋流'] },
-      '青': { candidate: '青', result: '清', pinyin: 'qīng', meaning: '纯净透明，没有杂质。', examples: ['清水', '清洁'] }
-    }
+    radical: '氵', name: '三点水', pinyin: 'sān diǎn shuǐ', level: '启蒙', hint: '通常与液体、河流、水的状态有关。',
+    characters: [
+      { candidate: '工', result: '江', pinyin: 'jiāng', meaning: '大河的通称。', examples: ['长江', '江苏'] },
+      { candidate: '羊', result: '洋', pinyin: 'yáng', meaning: '广大的海域。', examples: ['海洋', '远洋'] },
+      { candidate: '青', result: '清', pinyin: 'qīng', meaning: '纯净透明，无杂质。', examples: ['清水', '清晨'] },
+      { candidate: '可', result: '河', pinyin: 'hé', meaning: '水道，天然的流水。', examples: ['河边', '小河'] },
+      { candidate: '每', result: '海', pinyin: 'hǎi', meaning: '靠近陆地的广阔水域。', examples: ['大海', '上海'] },
+      { candidate: '去', result: '法', pinyin: 'fǎ', meaning: '规则，规范。', examples: ['法律', '方法'] },
+      { candidate: '也', result: '池', pinyin: 'chí', meaning: '蓄水的坑。', examples: ['池塘', '电池'] },
+      { candidate: '台', result: '治', pinyin: 'zhì', meaning: '管理，整理。', examples: ['治理', '治病'] }
+    ]
   },
   {
-    id: 2, radical: '口', radicalName: '口字旁', radicalPinyin: 'kǒu zì páng', meaningHint: '常与嘴巴、呼喊有关',
-    options: ['丁', '马', '巴'],
-    results: {
-      '丁': { candidate: '丁', result: '叮', pinyin: 'dīng', meaning: '再三嘱咐，或模拟金属撞击声。', examples: ['叮当', '叮嘱'] },
-      '马': { candidate: '马', result: '吗', pinyin: 'ma', meaning: '疑问助词，用在句末。', examples: ['好吗', '你好吗'] },
-      '巴': { candidate: '巴', result: '吧', pinyin: 'ba', meaning: '语气助词，表示商量、提议。', examples: ['走吧', '好吧'] }
-    }
+    radical: '亻', name: '单人旁', pinyin: 'dān rén páng', level: '启蒙', hint: '与人的身份、动作或状态有关。',
+    characters: [
+      { candidate: '主', result: '住', pinyin: 'zhù', meaning: '长期居留。', examples: ['居住', '住房'] },
+      { candidate: '言', result: '信', pinyin: 'xìn', meaning: '诚实，或者书信。', examples: ['相信', '写信'] },
+      { candidate: '也', result: '他', pinyin: 'tā', meaning: '称男性或第三方。', examples: ['他们', '他的'] },
+      { candidate: '尔', result: '你', pinyin: 'nǐ', meaning: '称对方。', examples: ['你好', '你们'] },
+      { candidate: '可', result: '何', pinyin: 'hé', meaning: '疑问代词，什么。', examples: ['如何', '几何'] },
+      { candidate: '乍', result: '作', pinyin: 'zuò', meaning: '进行工作或活动。', examples: ['作业', '作为'] },
+      { candidate: '本', result: '体', pinyin: 'tǐ', meaning: '人或动物的全身。', examples: ['身体', '体育'] },
+      { candidate: '门', result: '们', pinyin: 'men', meaning: '表示人称复数。', examples: ['我们', '同学们'] }
+    ]
   },
   {
-    id: 3, radical: '女', radicalName: '女字旁', radicalPinyin: 'nǚ zì páng', meaningHint: '常与女性或身份有关',
-    options: ['子', '马', '也'],
-    results: {
-      '子': { candidate: '子', result: '好', pinyin: 'hǎo', meaning: '优点多，使人满意。', examples: ['友好', '好学'] },
-      '马': { candidate: '马', result: '妈', pinyin: 'mā', meaning: '对母亲的称呼。', examples: ['妈妈', '母亲'] },
-      '也': { candidate: '也', result: '她', pinyin: 'tā', meaning: '用于女性的代词。', examples: ['她们', '她的'] }
-    }
+    radical: '艹', name: '草字头', pinyin: 'cǎo zì tóu', level: '启蒙', hint: '通常与花、草、药等植物有关。',
+    characters: [
+      { candidate: '化', result: '花', pinyin: 'huā', meaning: '植物的繁殖器官。', examples: ['鲜花', '花园'] },
+      { candidate: '早', result: '草', pinyin: 'cǎo', meaning: '草本植物的总称。', examples: ['小草', '草坪'] },
+      { candidate: '约', result: '药', pinyin: 'yào', meaning: '治病的东西。', examples: ['吃药', '中药'] },
+      { candidate: '节', result: '节', pinyin: 'jié', meaning: '段落，时令。', examples: ['节日', '季节'] },
+      { candidate: '苗', result: '苗', pinyin: 'miáo', meaning: '植物的幼苗。', examples: ['树苗', '禾苗'] },
+      { candidate: '英', result: '英', pinyin: 'yīng', meaning: '卓越的，花。', examples: ['英雄', '英语'] },
+      { candidate: '苦', result: '苦', pinyin: 'kǔ', meaning: '像胆汁的味道。', examples: ['辛苦', '苦瓜'] }
+    ]
   },
   {
-    id: 4, radical: '忄', radicalName: '竖心旁', radicalPinyin: 'shù xīn páng', meaningHint: '常与心情、情感有关',
-    options: ['青', '白', '少'],
-    results: {
-      '青': { candidate: '青', result: '情', pinyin: 'qíng', meaning: '外界刺激引起的心理状态。', examples: ['感情', '情绪'] },
-      '白': { candidate: '白', result: '怕', pinyin: 'pà', meaning: '心中恐惧，畏惧。', examples: ['害怕', '恐怕'] },
-      '少': { candidate: '少', result: '忙', pinyin: 'máng', meaning: '事情多，没时间休息。', examples: ['忙碌', '繁忙'] }
-    }
+    radical: '木', name: '木字旁', pinyin: 'mù zì páng', level: '启蒙', hint: '与树木、木材、建筑有关。',
+    characters: [
+      { candidate: '子', result: '李', pinyin: 'lǐ', meaning: '姓氏，或果实名。', examples: ['李子', '行李'] },
+      { candidate: '寸', result: '村', pinyin: 'cūn', meaning: '乡下，农村。', examples: ['乡村', '村庄'] },
+      { candidate: '几', result: '机', pinyin: 'jī', meaning: '机器，机会。', examples: ['手机', '飞机'] },
+      { candidate: '对', result: '树', pinyin: 'shù', meaning: '木本植物的总称。', examples: ['大树', '树林'] },
+      { candidate: '支', result: '枝', pinyin: 'zhī', meaning: '树木的分支。', examples: ['树枝', '柳枝'] },
+      { candidate: '反', result: '板', pinyin: 'bǎn', meaning: '片状的木材。', examples: ['木板', '板凳'] }
+    ]
   },
   {
-    id: 5, radical: '扌', radicalName: '提手旁', radicalPinyin: 'tí shǒu páng', meaningHint: '常与动作、手部有关',
-    options: ['丁', '斤', '合'],
-    results: {
-      '丁': { candidate: '丁', result: '打', pinyin: 'dǎ', meaning: '击，敲击，击中。', examples: ['打球', '打字'] },
-      '斤': { candidate: '斤', result: '折', pinyin: 'zhé', meaning: '弄断，或者打折扣。', examples: ['折叠', '打折'] },
-      '合': { candidate: '合', result: '拾', pinyin: 'shí', meaning: '拿起，从地上捡。', examples: ['拾起', '收拾'] }
-    }
+    radical: '扌', name: '提手旁', pinyin: 'tí shǒu páng', level: '进阶', hint: '与手的动作、力量、操作有关。',
+    characters: [
+      { candidate: '丁', result: '打', pinyin: 'dǎ', meaning: '击，敲击。', examples: ['打球', '打字'] },
+      { candidate: '戈', result: '找', pinyin: 'zhǎo', meaning: '寻找。', examples: ['寻找', '找到'] },
+      { candidate: '白', result: '拍', pinyin: 'pāi', meaning: '用手掌打。', examples: ['拍手', '拍照'] },
+      { candidate: '立', result: '拉', pinyin: 'lā', meaning: '牵引。', examples: ['拉车', '拉链'] },
+      { candidate: '合', result: '拾', pinyin: 'shí', meaning: '捡起，整理。', examples: ['拾起', '收拾'] },
+      { candidate: '巴', result: '把', pinyin: 'bǎ', meaning: '抓握，量词。', examples: ['把握', '火把'] }
+    ]
   },
   {
-    id: 6, radical: '讠', radicalName: '言字旁', radicalPinyin: 'yán zì páng', meaningHint: '常与说话、语言有关',
-    options: ['人', '午', '青'],
-    results: {
-      '人': { candidate: '人', result: '认', pinyin: 'rèn', meaning: '辨别，认可。', examples: ['认识', '确认'] },
-      '午': { candidate: '午', result: '许', pinyin: 'xǔ', meaning: '应允，许可，或者也许。', examples: ['许可', '也许'] },
-      '青': { candidate: '青', result: '请', pinyin: 'qǐng', meaning: '礼貌请求，邀请。', examples: ['请问', '邀请'] }
-    }
+    radical: '讠', name: '言字旁', pinyin: 'yán zì páng', level: '进阶', hint: '与言语、说话、思维、文字有关。',
+    characters: [
+      { candidate: '吾', result: '语', pinyin: 'yǔ', meaning: '说话，言辞。', examples: ['语言', '语文'] },
+      { candidate: '兑', result: '说', pinyin: 'shuō', meaning: '用话表达。', examples: ['说话', '说明'] },
+      { candidate: '卖', result: '读', pinyin: 'dú', meaning: '看书，诵读。', examples: ['读书', '朗读'] },
+      { candidate: '成', result: '诚', pinyin: 'chéng', meaning: '真心。', examples: ['诚实', '诚心'] },
+      { candidate: '课', result: '课', pinyin: 'kè', meaning: '教学的内容。', examples: ['上课', '课本'] },
+      { candidate: '身', result: '谢', pinyin: 'xiè', meaning: '表示感激。', examples: ['谢谢', '致谢'] }
+    ]
   },
   {
-    id: 7, radical: '木', radicalName: '木字旁', radicalPinyin: 'mù zì páng', meaningHint: '常与树木、植物有关',
-    options: ['子', '目', '寸'],
-    results: {
-      '子': { candidate: '子', result: '李', pinyin: 'lǐ', meaning: '一种落叶小乔木及其果实。', examples: ['李子', '李先生'] },
-      '目': { candidate: '目', result: '相', pinyin: 'xiāng', meaning: '交互，互相，或者容貌。', examples: ['相同', '相片'] },
-      '寸': { candidate: '寸', result: '村', pinyin: 'cūn', meaning: '乡下聚居的地方。', examples: ['村庄', '农村'] }
-    }
-  },
-  {
-    id: 8, radical: '钅', radicalName: '金字旁', radicalPinyin: 'jīn zì páng', meaningHint: '常与金属、器具有关',
-    options: ['今', '少', '中'],
-    results: {
-      '今': { candidate: '今', result: '钦', pinyin: 'qīn', meaning: '指帝王，也表示敬佩。', examples: ['钦佩', '钦点'] },
-      '少': { candidate: '少', result: '钞', pinyin: 'chāo', meaning: '纸币，货币。', examples: ['纸钞', '钞票'] },
-      '中': { candidate: '中', result: '钟', pinyin: 'zhōng', meaning: '计时的仪器。', examples: ['时钟', '钟表'] }
-    }
-  },
-  {
-    id: 9, radical: '亻', radicalName: '单人旁', radicalPinyin: 'dān rén páng', meaningHint: '常与人、行为有关',
-    options: ['可', '主', '言'],
-    results: {
-      '可': { candidate: '可', result: '何', pinyin: 'hé', meaning: '疑问代词，什么，为什么。', examples: ['为何', '如何'] },
-      '主': { candidate: '主', result: '住', pinyin: 'zhù', meaning: '长期居留，停止。', examples: ['居住', '住在'] },
-      '言': { candidate: '言', result: '信', pinyin: 'xìn', meaning: '诚实，信息，函件。', examples: ['写信', '相信'] }
-    }
-  },
-  {
-    id: 10, radical: '辶', radicalName: '走之旁', radicalPinyin: 'zǒu zhī páng', meaningHint: '常与行走、道路有关',
-    options: ['斤', '寸', '文'],
-    results: {
-      '斤': { candidate: '斤', result: '近', pinyin: 'jìn', meaning: '距离短。', examples: ['接近', '靠近'] },
-      '寸': { candidate: '寸', result: '过', pinyin: 'guò', meaning: '经过，走过。', examples: ['经过', '过河'] },
-      '文': { candidate: '文', result: '这', pinyin: 'zhè', meaning: '指示代词，代指近处。', examples: ['这个', '这边'] }
-    }
+    radical: '口', name: '口字旁', pinyin: 'kǒu zì páng', level: '启蒙', hint: '与嘴、吃喝、声音、出入口有关。',
+    characters: [
+      { candidate: '乞', result: '吃', pinyin: 'chī', meaning: '咽下食物。', examples: ['吃饭', '吃苦'] },
+      { candidate: '可', result: '呵', pinyin: 'hē', meaning: '笑声或呵气。', examples: ['呵呵', '呵护'] },
+      { candidate: '马', result: '吗', pinyin: 'ma', meaning: '疑问语气词。', examples: ['好吗', '是吗'] },
+      { candidate: '昌', result: '唱', pinyin: 'chàng', meaning: '发出歌声。', examples: ['唱歌', '合唱'] },
+      { candidate: '那', result: '哪', pinyin: 'nǎ', meaning: '疑问词，指代。', examples: ['哪里', '哪个'] }
+    ]
   }
 ];
 
 const CharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [selection, setSelection] = useState<string | null>(null);
+  const [currentRadicalIdx, setCurrentRadicalIdx] = useState(0);
+  const [candidates, setCandidates] = useState<CharacterDetail[]>([]);
+  const [selection, setSelection] = useState<CharacterDetail | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
-  const [hintedIndex, setHintedIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [learnedCount, setLearnedCount] = useState(() => Number(localStorage.getItem('char_learned') || 0));
 
-  const question = QUESTIONS[currentIdx];
+  const refreshQuestion = useCallback(() => {
+    const newIdx = Math.floor(Math.random() * CHARACTER_DICTIONARY.length);
+    const group = CHARACTER_DICTIONARY[newIdx];
+    setCurrentRadicalIdx(newIdx);
 
-  const handleNext = () => {
-    let next;
-    do {
-      next = Math.floor(Math.random() * QUESTIONS.length);
-    } while (next === currentIdx);
-    setCurrentIdx(next);
+    const correctOnes = [...group.characters].sort(() => 0.5 - Math.random()).slice(0, 4);
+    const otherPool = CHARACTER_DICTIONARY.filter(g => g.radical !== group.radical).flatMap(g => g.characters);
+    const distractors = otherPool.sort(() => 0.5 - Math.random()).slice(0, 5);
+    
+    setCandidates([...correctOnes, ...distractors].sort(() => 0.5 - Math.random()));
     setSelection(null);
     setIsSuccess(false);
-    setHintedIndex(null);
-  };
+  }, []);
 
-  const handleClear = () => {
-    setSelection(null);
-    setIsSuccess(false);
-    setHintedIndex(null);
-  };
+  useEffect(() => { refreshQuestion(); }, [refreshQuestion]);
 
-  const handleCompose = (char: string) => {
-    setSelection(char);
-    if (question.results[char]) {
+  const handleCompose = (item: CharacterDetail) => {
+    setSelection(item);
+    const currentGroup = CHARACTER_DICTIONARY[currentRadicalIdx];
+    if (currentGroup.characters.some(c => c.result === item.result)) {
       setIsSuccess(true);
-      setHintedIndex(null);
+      const newCount = learnedCount + 1;
+      setLearnedCount(newCount);
+      localStorage.setItem('char_learned', String(newCount));
+      playTTS(item.result);
     } else {
       setIsSuccess(false);
     }
   };
 
-  const playTTS = (text: string, pinyin: string) => {
+  const playTTS = (text: string) => {
     if ('speechSynthesis' in window) {
-      const msg = new SpeechSynthesisUtterance(`${text}, ${pinyin}`);
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(text);
       msg.lang = 'zh-CN';
-      msg.rate = 0.8;
       window.speechSynthesis.speak(msg);
     }
   };
 
-  const handleHint = () => {
-    const validKeys = Object.keys(question.results);
-    if (validKeys.length > 0) {
-      const randomKey = validKeys[Math.floor(Math.random() * validKeys.length)];
-      const idx = question.options.indexOf(randomKey);
-      setHintedIndex(idx);
-      setSelection(randomKey);
-    }
-  };
+  const currentGroup = CHARACTER_DICTIONARY[currentRadicalIdx];
 
-  // Drag and Drop
-  const onDragStart = (e: React.DragEvent, char: string) => {
-    e.dataTransfer.setData('text/plain', char);
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const char = e.dataTransfer.getData('text/plain');
-    if (char) handleCompose(char);
-  };
-
-  const onDragOver = (e: React.DragEvent) => e.preventDefault();
+  const libraryItems = useMemo(() => {
+    return CHARACTER_DICTIONARY.flatMap(g => g.characters.map(c => ({...c, r: g.radical, rn: g.name, l: g.level})))
+      .filter(c => c.result.includes(searchQuery) || c.rn.includes(searchQuery) || c.pinyin.includes(searchQuery.toLowerCase()));
+  }, [searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] text-[#1F2937] pb-12 font-sans selection:bg-[#2E7D32]/20">
+    <div className="fixed inset-0 z-[60] bg-[#F8FAFC] flex flex-col h-full overflow-hidden select-none font-sans">
       
-      {/* Header Container */}
-      <header className="max-w-[1120px] mx-auto px-6 py-8">
-        <div className="flex justify-between items-center mb-4">
-           <div>
-             <h1 className="text-3xl font-bold text-[#1F2937] mb-2 tracking-tight">偏旁部首拼汉字</h1>
-             <p className="text-slate-500 max-w-2xl text-base leading-relaxed">
-               汉字由偏旁部首和其他部件组成，认识常见部件有助于识字与书写。通过组合偏旁来解锁新汉字吧！
-             </p>
+      {/* 1. 紧凑型顶部栏 */}
+      <header className="h-14 sm:h-16 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-600 rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center">
+            <Languages className="text-white w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-sm sm:text-base font-black text-slate-800">识字通 <span className="text-[10px] text-emerald-500 ml-1">v3.5 PRO</span></h1>
+            <div className="flex items-center gap-2 mt-0.5">
+               <div className="h-1 w-16 sm:w-24 bg-slate-100 rounded-full overflow-hidden">
+                   <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(100, (learnedCount/200)*100)}%` }} />
+               </div>
+               <span className="text-[9px] font-black text-slate-400">{(learnedCount/2).toFixed(0)}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-4">
+           <div className="hidden sm:flex bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 items-center gap-2">
+             <Trophy className="w-3.5 h-3.5 text-emerald-600" />
+             <span className="text-xs font-black text-emerald-800">{learnedCount} 字</span>
            </div>
-           <button onClick={onClose} className="p-3 hover:bg-white rounded-full transition-colors shadow-sm">
-             <X className="w-6 h-6 text-slate-400" />
+           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+             <X size={20} />
            </button>
         </div>
       </header>
 
-      <main className="max-w-[1120px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+      {/* 2. 主体内容区 - 核心：禁止滚动，内部自适应 */}
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-[#F8FAFC]">
         
-        {/* Left Side: Radical Info */}
-        <section className="lg:col-span-1">
-          <div className="bg-white rounded-2xl shadow-sm p-8 border border-slate-100 flex flex-col items-center h-full">
-            <span className="text-xs font-bold text-[#2E7D32] uppercase tracking-[0.2em] mb-4">当前偏旁</span>
-            <div className="w-32 h-32 bg-slate-50 rounded-2xl border-2 border-slate-100 flex items-center justify-center text-7xl font-bold text-[#2E7D32] mb-6 shadow-inner">
-              {question.radical}
-            </div>
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-1">{question.radicalName}</h2>
-              <p className="text-sm font-mono text-slate-400 uppercase tracking-widest">{question.radicalPinyin}</p>
-              <p className="mt-4 text-sm text-slate-500 italic bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{question.meaningHint}</p>
-            </div>
-            <button 
-              onClick={handleNext}
-              className="mt-auto w-full py-4 bg-white border-2 border-[#2E7D32] text-[#2E7D32] font-bold rounded-xl hover:bg-[#2E7D32] hover:text-white transition-all flex items-center justify-center gap-2 group"
-            >
-              更换一题
-              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+        {/* 左侧/上方：核心构建区 (实验场) */}
+        <section className="flex-[1.4] flex flex-col p-4 sm:p-6 lg:p-10 justify-center items-center gap-4 sm:gap-6 border-b lg:border-b-0 lg:border-r border-slate-200 relative">
+          
+          {/* 部首详情卡 */}
+          <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-sm flex items-center gap-4 sm:gap-8 relative overflow-hidden group">
+             <div className="absolute top-0 right-0 p-2 opacity-[0.03] rotate-12"><Sparkles size={80}/></div>
+             <div className="w-24 h-24 sm:w-32 sm:h-32 bg-emerald-50 rounded-[2rem] flex items-center justify-center text-6xl sm:text-8xl font-black text-emerald-700 shadow-inner">
+               {currentGroup?.radical}
+             </div>
+             <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                   <h2 className="text-xl sm:text-3xl font-black text-slate-900">{currentGroup?.name}</h2>
+                   <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
+                     currentGroup?.level === '启蒙' ? 'bg-blue-50 text-blue-500' : 'bg-orange-50 text-orange-500'
+                   }`}>{currentGroup?.level}</span>
+                </div>
+                <p className="text-[10px] sm:text-xs font-mono text-slate-400 uppercase tracking-[0.3em] mb-3">{currentGroup?.pinyin}</p>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                   <p className="text-[11px] sm:text-sm text-slate-500 font-medium leading-relaxed italic">{currentGroup?.hint}</p>
+                </div>
+             </div>
+          </div>
+
+          {/* 交互构建区 - 动态适配 */}
+          <div className={`
+            w-full max-w-lg flex-1 min-h-[160px] sm:min-h-[220px] bg-white rounded-[3rem] border-4 border-dashed p-6 flex flex-col items-center justify-center relative transition-all duration-500
+            ${isSuccess ? 'border-emerald-500 bg-emerald-50/20 shadow-[0_0_40px_rgba(16,185,129,0.1)]' : 'border-slate-200'}
+          `}>
+             <div className="flex items-center text-[80px] sm:text-[120px] lg:text-[140px] font-black tracking-tighter text-slate-100 select-none">
+                <span className={`transition-all duration-700 ${isSuccess ? 'text-emerald-700' : 'text-slate-200'}`}>{currentGroup?.radical}</span>
+                <span className="mx-4 sm:mx-8 text-3xl sm:text-5xl opacity-20 text-slate-300 font-light">+</span>
+                <div className={`min-w-[1.2em] h-[1.2em] flex items-center justify-center border-b-4 sm:border-b-8 transition-all duration-700 ${isSuccess ? 'border-emerald-500 text-emerald-600 animate-in zoom-in' : 'border-slate-100 text-slate-300'}`}>
+                  {selection?.candidate || <div className="w-16 sm:w-24 h-2 bg-slate-100 rounded-full animate-pulse"></div>}
+                </div>
+             </div>
+             {!isSuccess && selection && (
+               <div className="absolute bottom-6 flex items-center gap-2 bg-red-50 text-red-400 px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-black animate-bounce border border-red-100">
+                  <Info size={14} /> 组合失败，这不是常用字
+               </div>
+             )}
           </div>
         </section>
 
-        {/* Right Side: Composer & Candidates */}
-        <section className="lg:col-span-2 flex flex-col gap-6">
-          
-          {/* Action Bar */}
-          <div className="flex justify-end gap-3 mb-2">
-            <ActionButton icon={<Eraser className="w-4 h-4" />} label="清除" onClick={handleClear} />
-            <ActionButton icon={<Lightbulb className="w-4 h-4" />} label="提示" onClick={handleHint} />
-            <ActionButton icon={<BookOpen className="w-4 h-4" />} label="查看字库" onClick={() => setShowLibrary(true)} />
-          </div>
+        {/* 右侧/下方：控制与候选区 (操作台) */}
+        <section className="flex-1 flex flex-col bg-white lg:bg-slate-50/30 p-4 sm:p-6 lg:p-10 overflow-hidden">
+           <div className="flex-1 flex flex-col justify-center gap-4 sm:gap-8">
+             <div className="flex justify-between items-center px-2">
+                <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.4em] flex items-center gap-2">
+                   <LayoutGrid size={14}/> 候选部件网格
+                </h3>
+                <span className="text-[10px] font-black text-slate-300">9 选 1</span>
+             </div>
 
-          {/* Composition Zone */}
-          <div 
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            className={`
-              bg-white rounded-2xl border-2 border-dashed h-64 flex items-center justify-center transition-all duration-500
-              ${isSuccess ? 'border-[#2E7D32] bg-[#F0FDF4] shadow-[0_0_40px_rgba(46,125,50,0.1)]' : 'border-slate-200'}
-            `}
-          >
-            <div className="flex items-center text-8xl font-bold tracking-tighter">
-              <span className="text-slate-300 mr-2">{question.radical}</span>
-              <span className="text-[#0EA5E9]">+</span>
-              <div className="min-w-[120px] ml-2 flex items-center justify-center border-b-4 border-slate-100 pb-2">
-                 {selection ? (
-                   <span className={`animate-in fade-in zoom-in duration-300 ${isSuccess ? 'text-[#2E7D32]' : 'text-[#0EA5E9]'}`}>
-                    {selection}
-                   </span>
-                 ) : (
-                   <div className="w-16 h-1 bg-slate-100 rounded-full animate-pulse"></div>
-                 )}
-              </div>
-            </div>
-          </div>
+             {/* 候选磁贴网格 - 自适应 3x3 布局 */}
+             <div className="grid grid-cols-3 gap-3 sm:gap-5 overflow-hidden p-1">
+                {candidates.map((item, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => handleCompose(item)}
+                    className={`
+                      aspect-square bg-white rounded-2xl sm:rounded-[2rem] border-2 flex items-center justify-center text-4xl sm:text-6xl font-black transition-all shadow-sm
+                      ${selection?.result === item.result 
+                        ? (isSuccess ? 'border-emerald-500 text-emerald-600 ring-4 ring-emerald-500/10' : 'border-red-400 text-red-400 scale-95 shadow-inner') 
+                        : 'border-transparent text-slate-700 hover:border-emerald-200 hover:shadow-lg active:scale-90'
+                      }
+                    `}
+                  >
+                    {item.candidate}
+                  </button>
+                ))}
+             </div>
 
-          {/* Candidates */}
-          <div className="grid grid-cols-3 gap-6">
-            {question.options.map((char, i) => (
-              <button
-                key={i}
-                draggable
-                onDragStart={(e) => onDragStart(e, char)}
-                onClick={() => handleCompose(char)}
-                className={`
-                  relative h-32 bg-white rounded-xl shadow-sm border-2 text-4xl font-bold transition-all duration-300
-                  ${selection === char 
-                    ? (isSuccess ? 'border-[#2E7D32] text-[#2E7D32] scale-105 shadow-md' : 'border-[#0EA5E9] text-[#0EA5E9] scale-105') 
-                    : 'border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50'
-                  }
-                  ${hintedIndex === i ? 'ring-4 ring-yellow-400/30' : ''}
-                `}
-              >
-                {char}
-                {hintedIndex === i && <span className="absolute -top-3 -right-3 w-8 h-8 bg-yellow-400 text-white rounded-full flex items-center justify-center text-xs animate-bounce shadow-sm"><Lightbulb className="w-4 h-4" /></span>}
-              </button>
-            ))}
-          </div>
-
+             {/* 底部按钮组 */}
+             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 shrink-0 mt-4">
+                <button 
+                  onClick={refreshQuestion}
+                  className="flex-1 py-4 sm:py-5 bg-white border border-slate-200 text-slate-600 rounded-2xl sm:rounded-[2rem] font-black text-xs sm:text-sm flex items-center justify-center gap-3 hover:bg-slate-50 active:scale-95 transition-all shadow-sm group"
+                >
+                  <RotateCcw size={16} className="group-hover:rotate-180 transition-transform duration-500" /> 下一关卡
+                </button>
+                <button 
+                  onClick={() => setShowLibrary(true)}
+                  className="flex-1 py-4 sm:py-5 bg-slate-900 text-white rounded-2xl sm:rounded-[2rem] font-black text-xs sm:text-sm flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all hover:bg-slate-800"
+                >
+                  <BookOpen size={16} /> 2000+ 字库库
+                </button>
+             </div>
+           </div>
         </section>
       </main>
 
-      {/* Learning Zone Footer */}
-      <footer className="max-w-[1120px] mx-auto px-6">
-        <div className="bg-white rounded-2xl shadow-sm p-8 border border-slate-100">
-           <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-             <BookOpen className="w-6 h-6 text-[#2E7D32]" />
-             识字小课堂
-           </h3>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <div>
-                <h4 className="font-bold text-[#2E7D32] mb-3">常用偏旁说明</h4>
-                <ul className="space-y-3 text-sm text-slate-600">
-                  <li className="flex gap-2"><strong>氵</strong> 三点水：常与水、海洋、洗涤或液体有关。</li>
-                  <li className="flex gap-2"><strong>讠</strong> 言字旁：常与说话、语言、礼貌或思维有关。</li>
-                  <li className="flex gap-2"><strong>扌</strong> 提手旁：常与手部动作、力气或操作有关。</li>
-                  <li className="flex gap-2"><strong>女</strong> 女字旁：常与女性、亲属或称呼有关。</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-bold text-[#2E7D32] mb-3">汉字结构简述</h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <StructureBox label="左右结构" example="江" />
-                  <StructureBox label="上下结构" example="李" />
-                  <StructureBox label="半包围" example="这" />
-                  <StructureBox label="全包围" example="国" />
-                  <StructureBox label="品字结构" example="森" />
-                  <StructureBox label="独体字" example="人" />
-                </div>
-              </div>
-           </div>
-        </div>
-      </footer>
-
-      {/* Success Modal */}
+      {/* 成功反馈浮层 - 覆盖全屏 */}
       {isSuccess && selection && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
-            <div className="h-2 bg-[#2E7D32] w-full"></div>
-            <div className="p-8 text-center relative">
-              <button onClick={() => setIsSuccess(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-              
-              <div className="mb-6">
-                <div className="text-8xl font-bold text-[#2E7D32] mb-4">
-                  {question.results[selection].result}
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-2xl text-slate-400 font-mono tracking-widest">{question.results[selection].pinyin}</span>
-                  <button 
-                    onClick={() => playTTS(question.results[selection].result, question.results[selection].pinyin)}
-                    className="p-2 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 rounded-full transition-colors"
-                  >
-                    <Volume2 className="w-6 h-6" />
-                  </button>
-                </div>
+        <div className="fixed inset-0 z-[100] bg-white/95 backdrop-blur-2xl flex items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
+           <div className="w-full max-w-md text-center">
+              <div className="relative mb-8">
+                 <div className="absolute -inset-10 bg-emerald-400/10 rounded-full blur-3xl animate-pulse"></div>
+                 <div className="text-[120px] sm:text-[180px] font-black text-emerald-800 leading-none relative">{selection.result}</div>
               </div>
-
-              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-left mb-8">
-                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">基本释义</h4>
-                 <p className="text-slate-700 leading-relaxed mb-4">{question.results[selection].meaning}</p>
-                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">常用词组</h4>
-                 <div className="flex gap-2">
-                   {question.results[selection].examples.map(ex => (
-                     <span key={ex} className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-sm font-medium text-[#2E7D32]">{ex}</span>
-                   ))}
+              <div className="text-3xl sm:text-5xl font-mono text-slate-300 font-black tracking-[0.3em] mb-8 uppercase flex items-center justify-center gap-4">
+                 {selection.pinyin}
+                 <button onClick={() => playTTS(selection.result)} className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                   <Volume2 size={24} />
+                 </button>
+              </div>
+              
+              <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 text-left border border-slate-200 mb-10 shadow-lg">
+                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Lightbulb size={14} className="text-yellow-500"/> 字义百科</h4>
+                 <p className="text-slate-800 text-lg sm:text-xl font-bold leading-relaxed mb-6">{selection.meaning}</p>
+                 <div className="flex flex-wrap gap-2 sm:gap-3">
+                    {selection.examples.map(ex => (
+                      <span key={ex} className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl text-xs sm:text-sm font-black text-emerald-800 shadow-sm">{ex}</span>
+                    ))}
                  </div>
               </div>
 
               <button 
-                onClick={handleNext}
-                className="w-full py-4 bg-[#2E7D32] text-white font-bold rounded-xl shadow-lg shadow-[#2E7D32]/20 hover:bg-[#25632d] transition-all"
+                onClick={refreshQuestion}
+                className="w-full py-5 sm:py-6 bg-emerald-600 text-white text-xl sm:text-2xl font-black rounded-[2rem] shadow-2xl flex items-center justify-center gap-4 hover:bg-emerald-500 transition-all group"
               >
-                继续下一题
+                继续探索 <ChevronRight className="group-hover:translate-x-2 transition-transform" />
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Library Modal */}
-      {showLibrary && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-           <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-              <div className="p-6 border-b flex justify-between items-center bg-slate-50">
-                <h2 className="text-xl font-bold flex items-center gap-2"><BookOpen className="w-5 h-5" /> 汉字组合字库</h2>
-                <button onClick={() => setShowLibrary(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="p-0 overflow-y-auto no-scrollbar">
-                <table className="w-full text-left border-collapse">
-                   <thead className="bg-slate-100 sticky top-0 z-10">
-                     <tr>
-                        <th className="p-4 font-bold text-xs uppercase text-slate-500">偏旁</th>
-                        <th className="p-4 font-bold text-xs uppercase text-slate-500">右侧汉字</th>
-                        <th className="p-4 font-bold text-xs uppercase text-slate-500">合成汉字</th>
-                        <th className="p-4 font-bold text-xs uppercase text-slate-500">拼音</th>
-                        <th className="p-4 font-bold text-xs uppercase text-slate-500">释义与词组</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y">
-                      {QUESTIONS.flatMap(q => Object.values(q.results)).map((item, idx) => {
-                        const q = QUESTIONS.find(qu => qu.results[item.candidate]);
-                        return (
-                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-4 text-2xl font-bold text-[#2E7D32]">{q?.radical}</td>
-                            <td className="p-4 text-xl text-slate-700">{item.candidate}</td>
-                            <td className="p-4 text-3xl font-bold text-[#2E7D32]">{item.result}</td>
-                            <td className="p-4 font-mono text-slate-400">{item.pinyin}</td>
-                            <td className="p-4">
-                               <p className="text-sm text-slate-600 mb-1">{item.meaning}</p>
-                               <div className="flex gap-1">
-                                 {item.examples.map(ex => <span key={ex} className="text-[10px] bg-slate-100 px-1 rounded text-slate-500">{ex}</span>)}
-                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                   </tbody>
-                </table>
-              </div>
            </div>
         </div>
       )}
 
+      {/* 字库百科 - 采用全屏侧滑 */}
+      {showLibrary && (
+        <div className="fixed inset-0 z-[110] bg-[#F8FAFC] flex flex-col p-4 sm:p-10 animate-in slide-in-from-right duration-500 overflow-hidden">
+           <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col">
+             <div className="flex justify-between items-center mb-8 shrink-0">
+                <div className="flex items-center gap-4">
+                   <div className="p-4 bg-slate-900 rounded-[1.5rem] text-white shadow-xl"><LayoutGrid size={32}/></div>
+                   <div>
+                     <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">汉字全集百科</h2>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Global Character Library / {libraryItems.length} Entries</p>
+                   </div>
+                </div>
+                <button onClick={() => setShowLibrary(false)} className="p-4 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-slate-900 shadow-sm transition-all">
+                  <X size={28} />
+                </button>
+             </div>
+             
+             <div className="relative mb-8 shrink-0">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={24} />
+                <input 
+                  type="text" placeholder="输入汉字、部首名称或拼音关键词..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white border-2 border-slate-100 rounded-[2rem] py-5 pl-16 pr-8 text-lg font-bold shadow-sm focus:outline-none focus:border-emerald-500/30 transition-all"
+                />
+             </div>
+
+             <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   {libraryItems.map((char, idx) => (
+                      <div key={idx} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 hover:border-emerald-200 transition-all shadow-sm group">
+                        <div className="flex justify-between items-start mb-6">
+                           <div className="text-6xl font-black text-slate-900 group-hover:text-emerald-700 transition-colors">{char.result}</div>
+                           <div className="text-right">
+                              <span className="px-3 py-1 bg-slate-50 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-100">{char.r} 部</span>
+                              <button onClick={() => playTTS(char.result)} className="block p-2 mt-2 text-slate-300 hover:text-emerald-500 transition-colors ml-auto"><Volume2 size={20} /></button>
+                           </div>
+                        </div>
+                        <div className="text-lg font-mono text-slate-300 font-black mb-3 tracking-widest uppercase">{char.pinyin}</div>
+                        <p className="text-slate-500 text-xs font-medium leading-relaxed mb-6 line-clamp-2">{char.meaning}</p>
+                        <div className="flex flex-wrap gap-2">
+                           {char.examples.map(ex => <span key={ex} className="px-2 py-1 bg-slate-50 rounded-lg text-[10px] font-bold text-slate-400">{ex}</span>)}
+                        </div>
+                      </div>
+                   ))}
+                   {libraryItems.length === 0 && (
+                     <div className="col-span-full py-24 text-center">
+                        <SearchCode size={64} className="mx-auto text-slate-200 mb-4" />
+                        <p className="text-slate-400 font-bold uppercase tracking-widest">未搜索到匹配的汉字条目</p>
+                     </div>
+                   )}
+                </div>
+             </div>
+           </div>
+        </div>
+      )}
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 };
-
-const ActionButton = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) => (
-  <button 
-    onClick={onClick}
-    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
-  >
-    {icon}
-    {label}
-  </button>
-);
-
-const StructureBox = ({ label, example }: { label: string, example: string }) => (
-  <div className="bg-slate-50 p-2 rounded border border-slate-100">
-    <div className="text-xs text-slate-400 mb-1">{label}</div>
-    <div className="text-xl font-bold text-slate-700">{example}</div>
-  </div>
-);
 
 export default CharacterApp;
