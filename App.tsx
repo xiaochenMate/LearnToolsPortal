@@ -15,6 +15,7 @@ import HistorySortingApp from './components/HistorySortingApp';
 import BrainTeaseApp from './components/BrainTeaseApp';
 import GobangApp from './components/GobangApp';
 import PixelArtApp from './components/PixelArtApp';
+import ChineseChessApp from './components/ChineseChessApp';
 import HeroSpotlight from './components/HeroSpotlight';
 import ActivityTicker from './components/ActivityTicker';
 import AuthUI from './components/AuthUI';
@@ -119,6 +120,7 @@ const App: React.FC = () => {
       case 'e18': return <MathSprintApp onClose={() => setRunningAppId(null)} />;
       case 'ent3': return <BrainTeaseApp onClose={() => setRunningAppId(null)} />;
       case 'ent4': return <GobangApp onClose={() => setRunningAppId(null)} />;
+      case 'ent5': return <ChineseChessApp onClose={() => setRunningAppId(null)} />;
       case 'ent1': return <PixelArtApp onClose={() => setRunningAppId(null)} />;
       default: return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center">
@@ -161,7 +163,7 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-6 py-10">
         {!searchQuery && activeCategory === 'ALL' && allModules.length > 0 && (
-          <HeroSpotlight item={allModules.find(m => m.id === 'ent1') || allModules[0]} onRun={handleRunApp} />
+          <HeroSpotlight item={allModules.find(m => m.id === 'ent5') || allModules[0]} onRun={handleRunApp} />
         )}
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12 border-b border-slate-900 pb-8">

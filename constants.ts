@@ -60,6 +60,15 @@ export const EDUCATION_ITEMS: AppItem[] = [
 
 export const ENTERTAINMENT_ITEMS: AppItem[] = [
   {
+    id: 'ent5',
+    title: '楚汉风云 - 中国象棋',
+    author: '@GrandMaster',
+    category: 'entertainment',
+    imageUrl: 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&q=80&w=800',
+    description: '经典中国象棋对弈，支持人机挑战与博弈分析。',
+    tags: ['传统', '博弈', 'AI']
+  },
+  {
     id: 'ent4',
     title: '博弈禅 - 五子棋',
     author: '@ZenMaster',
