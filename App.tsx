@@ -18,6 +18,7 @@ import PixelArtApp from './components/PixelArtApp';
 import ChineseChessApp from './components/ChineseChessApp';
 import ProArtApp from './components/ProArtApp';
 import VocabularyApp from './components/VocabularyApp';
+import IdiomApp from './components/IdiomApp';
 import HeroSpotlight from './components/HeroSpotlight';
 import ActivityTicker from './components/ActivityTicker';
 import AuthUI from './components/AuthUI';
@@ -126,6 +127,7 @@ const App: React.FC = () => {
       case 'ent1': return <PixelArtApp onClose={() => setRunningAppId(null)} />;
       case 'u1': return <ProArtApp onClose={() => setRunningAppId(null)} />;
       case 'u2': return <VocabularyApp onClose={() => setRunningAppId(null)} userEmail={user?.email} />;
+      case 'u3': return <IdiomApp onClose={() => setRunningAppId(null)} />;
       default: return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center">
           <Terminal className="w-16 h-16 text-emerald-500 mb-4 opacity-50" />

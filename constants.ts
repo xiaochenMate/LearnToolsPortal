@@ -115,5 +115,14 @@ export const UTILITIES_ITEMS: AppItem[] = [
     imageUrl: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=800',
     description: '沉浸式词汇记忆系统，支持从小学到雅思多级难度，采用科学间隔复习算法。',
     tags: ['英语', '词汇', '效率']
+  },
+  {
+    id: 'u3',
+    title: '博学雅趣 - 成语大辞典',
+    author: '@CultureExpert',
+    category: 'utilities',
+    imageUrl: 'https://images.unsplash.com/photo-1512486130939-2c4f79935e4f?auto=format&fit=crop&q=80&w=800',
+    description: '探索中华文化瑰宝，支持汉字、拼音及首字母快速检索，连接云端海量成语库。',
+    tags: ['文化', '工具', '检索']
   }
 ];
