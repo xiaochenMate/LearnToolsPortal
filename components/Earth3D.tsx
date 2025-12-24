@@ -23,7 +23,7 @@ const PLANETS_DATA: Record<string, any> = {
   Jupiter: { name: '木星', type: '气态', desc: '太阳系中体积最大的行星，它是一个巨大的气态巨行星。', tex: 'jupiter', size: 20, dist: 460, speed: 0.002, color: '#FDBA74', status: '强磁场环境' },
   Saturn: { name: '土星', type: '气态', desc: '以极其显著和壮丽的行星环系统而闻名于世。', tex: 'saturn', size: 17, dist: 640, speed: 0.0015, hasRing: true, color: '#FDE047', status: '环系波动' },
   Uranus: { name: '天王星', type: '冰巨', desc: '侧向自转的冰巨星，其自转轴几乎与公转轨道平面平行。', tex: 'uranus', size: 11, dist: 820, speed: 0.001, color: '#7DD3FC', status: '极度低温' },
-  Neptune: { name: '海王星', type: '冰巨', desc: '离太阳最远的行星，其大气层中有剧烈风暴。', tex: 'neptune', size: 11, dist: 980, speed: 0.0008, color: '#6366F1', status: '超音速风' }
+  Neptune: { name: '海王星', type: '冰巨', desc: '离太阳最远的行星，其大气层中有剧烈风夙。', tex: 'neptune', size: 11, dist: 980, speed: 0.0008, color: '#6366F1', status: '超音速风' }
 };
 
 const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
@@ -31,7 +31,7 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
   const initialized = useRef(false);
   const [selectedName, setSelectedName] = useState<string | null>('地球');
   const [isPanelVisible, setIsPanelVisible] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAutoRotating, setIsAutoRotating] = useState(true);
 
   const engine = useRef({
@@ -192,6 +192,7 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
       moonMesh.add(moonLabel);
       engine.current.planets.set(moonData.name, { pivot: moonPivot, mesh: moonMesh, data: moonData });
     }
+
     const handlePointerDown = (e: any) => {
       if (e.target.closest('button') || e.target.closest('.pointer-events-auto')) return;
       engine.current.controls.isDragging = true;
@@ -205,23 +206,39 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
       const hit = hits.find((h: any) => h.object.userData.name);
       if (hit) handleSelect(hit.object.userData.name);
     };
+
     window.addEventListener('resize', () => {
       const w = window.innerWidth, h = window.innerHeight;
       camera.aspect = w / h; camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     });
+
     containerRef.current?.addEventListener('mousedown', handlePointerDown);
+    containerRef.current?.addEventListener('touchstart', handlePointerDown, { passive: false });
+
     window.addEventListener('mousemove', (e) => {
       if (!engine.current.controls.isDragging) return;
       engine.current.controls.theta -= (e.clientX - engine.current.controls.lastX) * 0.005;
       engine.current.controls.phi = Math.max(0.1, Math.min(Math.PI - 0.1, engine.current.controls.phi - (e.clientY - engine.current.controls.lastY) * 0.005));
       engine.current.controls.lastX = e.clientX; engine.current.controls.lastY = e.clientY;
     });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!engine.current.controls.isDragging) return;
+      const touch = e.touches[0];
+      engine.current.controls.theta -= (touch.clientX - engine.current.controls.lastX) * 0.005;
+      engine.current.controls.phi = Math.max(0.1, Math.min(Math.PI - 0.1, engine.current.controls.phi - (touch.clientY - engine.current.controls.lastY) * 0.005));
+      engine.current.controls.lastX = touch.clientX; engine.current.controls.lastY = touch.clientY;
+    }, { passive: false });
+
     window.addEventListener('mouseup', () => engine.current.controls.isDragging = false);
+    window.addEventListener('touchend', () => engine.current.controls.isDragging = false);
+
     containerRef.current?.addEventListener('wheel', (e) => {
       const step = engine.current.controls.targetRadius * 0.15;
       engine.current.controls.targetRadius = Math.max(5, Math.min(2000000, engine.current.controls.targetRadius + (e.deltaY > 0 ? step : -step)));
     }, { passive: false });
+
     const animate = () => {
       const { camera, renderer, scene, planets, targetName, controls, isAutoRotating, vec_targetPos } = engine.current;
       planets.forEach(p => { 
@@ -258,57 +275,62 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
 
   return (
     <div ref={containerRef} className="fixed inset-0 bg-black z-50 overflow-hidden cursor-grab active:cursor-grabbing font-orbitron text-white">
-      <div className="absolute top-0 left-0 w-full p-8 flex justify-between items-start pointer-events-none z-[60]">
-        <div className="bg-black/20 backdrop-blur-xl px-8 py-4 border border-white/5 rounded-3xl pointer-events-auto shadow-2xl">
-            <div className="flex items-center gap-5">
-              <Cpu className="text-cyan-400 w-6 h-6 animate-pulse" />
+      {/* Top Header - Responsive */}
+      <div className="absolute top-0 left-0 w-full p-4 md:p-8 flex justify-between items-start pointer-events-none z-[60] pt-[calc(env(safe-area-inset-top)+1rem)]">
+        <div className="bg-black/40 backdrop-blur-xl px-4 py-2 md:px-8 md:py-4 border border-white/10 rounded-2xl md:rounded-3xl pointer-events-auto shadow-2xl">
+            <div className="flex items-center gap-3 md:gap-5">
+              <Cpu className="text-cyan-400 w-4 h-4 md:w-6 md:h-6 animate-pulse" />
               <div>
-                <h1 className="text-sm font-black tracking-[0.4em] uppercase text-white/90">深空遥测系统</h1>
-                <span className="text-[7px] text-cyan-500 font-bold uppercase tracking-[0.6em] block mt-1">状态: 在线 / 链路 ID: {Math.random().toString(16).slice(2,8).toUpperCase()}</span>
+                <h1 className="text-[10px] md:text-sm font-black tracking-[0.2em] md:tracking-[0.4em] uppercase text-white/90">深空遥测系统</h1>
+                <span className="text-[6px] md:text-[7px] text-cyan-500 font-bold uppercase tracking-[0.3em] md:tracking-[0.6em] block mt-0.5">
+                  状态: 在线 / ID: {Math.random().toString(16).slice(2,8).toUpperCase()}
+                </span>
               </div>
             </div>
         </div>
-        <button onClick={onClose} className="p-4 bg-white/5 border border-white/10 hover:bg-red-500 transition-all rounded-full pointer-events-auto">
-          <X className="w-6 h-6 opacity-60 hover:opacity-100" />
+        <button onClick={onClose} className="p-3 md:p-4 bg-white/5 border border-white/10 hover:bg-red-500 transition-all rounded-full pointer-events-auto">
+          <X className="w-5 h-5 md:w-6 md:h-6 opacity-60 hover:opacity-100" />
         </button>
       </div>
 
-      <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-1000 z-[55] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-1.5rem)]'}`}>
-        <div className="w-56 h-[60vh] bg-black/30 backdrop-blur-2xl border-y border-r border-white/10 rounded-r-[40px] p-6 flex flex-col pointer-events-auto">
-          <div className="text-[9px] font-black text-white/30 tracking-[0.4em] uppercase mb-8 italic px-2">星图档案</div>
-          <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1">
+      {/* Sidebar - Responsive */}
+      <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-700 z-[55] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-1rem)] md:-translate-x-[calc(100%-1.5rem)]'}`}>
+        <div className="w-40 md:w-56 h-[50vh] md:h-[60vh] bg-black/40 backdrop-blur-2xl border-y border-r border-white/10 rounded-r-[30px] md:rounded-r-[40px] p-4 md:p-6 flex flex-col pointer-events-auto shadow-2xl">
+          <div className="text-[8px] md:text-[9px] font-black text-white/30 tracking-[0.2em] md:tracking-[0.4em] uppercase mb-4 md:mb-8 italic px-1 md:px-2">星图档案</div>
+          <div className="flex-1 overflow-y-auto no-scrollbar space-y-1.5 md:space-y-2 pr-1">
             {Object.values(PLANETS_DATA).map(p => !p.isMoon && !p.isGalaxy && (
-              <button key={p.name} onClick={() => handleSelect(p.name)} className={`w-full text-left px-5 py-3 rounded-2xl text-[10px] font-bold tracking-[0.2em] transition-all uppercase ${selectedName === p.name ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+              <button key={p.name} onClick={() => handleSelect(p.name)} className={`w-full text-left px-3 py-2 md:px-5 md:py-3 rounded-xl md:rounded-2xl text-[8px] md:text-[10px] font-bold tracking-[0.1em] md:tracking-[0.2em] transition-all uppercase ${selectedName === p.name ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
                 {p.name}
               </button>
             ))}
           </div>
         </div>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-6 h-20 bg-white/5 backdrop-blur-3xl rounded-r-2xl flex items-center justify-center text-cyan-400/30 hover:text-cyan-400 transition-colors pointer-events-auto">
-          {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-5 md:w-6 h-16 md:h-20 bg-white/5 backdrop-blur-3xl rounded-r-xl md:rounded-r-2xl flex items-center justify-center text-cyan-400/30 hover:text-cyan-400 transition-colors pointer-events-auto border-y border-r border-white/5">
+          {isSidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
         </button>
       </div>
 
+      {/* Planet Detail Panel - Responsive */}
       {selectedName && current && (
-        <div className={`absolute right-8 bottom-32 w-[340px] z-[50] pointer-events-auto transition-all duration-700 ${isPanelVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'}`}>
-           <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[40px] p-10 shadow-2xl relative overflow-hidden group">
-              <button onClick={() => setIsPanelVisible(false)} className="absolute top-6 right-8 text-white/20 hover:text-white transition-colors">
+        <div className={`absolute right-4 md:right-8 bottom-24 md:bottom-32 w-[calc(100%-2rem)] md:w-[340px] max-w-[340px] z-[50] pointer-events-auto transition-all duration-700 ${isPanelVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'}`}>
+           <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[30px] md:rounded-[40px] p-6 md:p-10 shadow-2xl relative overflow-hidden group">
+              <button onClick={() => setIsPanelVisible(false)} className="absolute top-4 right-6 md:top-6 md:right-8 text-white/20 hover:text-white transition-colors p-2">
                 <ChevronDown size={20} />
               </button>
-              <div className="flex items-center gap-3 mb-4">
-                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                 <span className="text-[8px] text-emerald-500 font-black uppercase tracking-[0.4em]">实时遥测数据</span>
+              <div className="flex items-center gap-2 mb-3 md:mb-4">
+                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                 <span className="text-[7px] md:text-[8px] text-emerald-500 font-black uppercase tracking-[0.3em] md:tracking-[0.4em]">实时遥测数据</span>
               </div>
-              <h2 className="text-4xl font-black italic tracking-tighter mb-4 uppercase" style={{ color: current.color }}>{current.name}</h2>
-              <p className="text-white/60 text-[12px] leading-relaxed font-light italic mb-8 line-clamp-3">{current.desc}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-[7px] text-white/20 font-bold uppercase block mb-1">星体类型</span>
-                  <div className="text-white text-[10px] font-bold uppercase">{current.type}</div>
+              <h2 className="text-2xl md:text-4xl font-black italic tracking-tighter mb-2 md:mb-4 uppercase" style={{ color: current.color }}>{current.name}</h2>
+              <p className="text-white/60 text-[10px] md:text-[12px] leading-relaxed font-light italic mb-6 md:mb-8 line-clamp-3 md:line-clamp-none">{current.desc}</p>
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <div className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/5">
+                  <span className="text-[6px] md:text-[7px] text-white/20 font-bold uppercase block mb-0.5">星体类型</span>
+                  <div className="text-white text-[8px] md:text-[10px] font-bold uppercase">{current.type}</div>
                 </div>
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-[7px] text-white/20 font-bold uppercase block mb-1">系统状态</span>
-                  <div className="text-emerald-400 text-[10px] font-bold uppercase">{current.status || '运行中'}</div>
+                <div className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/5">
+                  <span className="text-[6px] md:text-[7px] text-white/20 font-bold uppercase block mb-0.5">系统状态</span>
+                  <div className="text-emerald-400 text-[8px] md:text-[10px] font-bold uppercase">{current.status || '运行中'}</div>
                 </div>
               </div>
            </div>
@@ -316,20 +338,21 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
       )}
 
       {selectedName && !isPanelVisible && (
-        <button onClick={() => setIsPanelVisible(true)} className="absolute right-12 bottom-36 p-5 bg-cyan-500/10 backdrop-blur-3xl border border-cyan-400/30 rounded-full text-cyan-400 animate-in fade-in zoom-in duration-300 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
-          <BarChart3 size={24} />
+        <button onClick={() => setIsPanelVisible(true)} className="absolute right-6 bottom-28 md:right-12 md:bottom-36 p-4 md:p-5 bg-cyan-500/20 backdrop-blur-3xl border border-cyan-400/30 rounded-full text-cyan-400 animate-in fade-in zoom-in duration-300 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
+          <BarChart3 size={20} className="md:w-6 md:h-6" />
         </button>
       )}
 
-      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-10 bg-white/5 backdrop-blur-2xl px-12 py-5 border border-white/10 rounded-full shadow-2xl z-[60] pointer-events-auto">
-          <button onClick={() => setIsAutoRotating(!isAutoRotating)} className={`flex items-center gap-4 transition-all ${isAutoRotating ? 'text-cyan-400' : 'text-white/20 hover:text-white'}`}>
-            <RotateCw size={16} className={isAutoRotating ? 'animate-[spin_12s_linear_infinite]' : ''} />
-            <span className="text-[10px] font-black tracking-[0.3em] uppercase italic">自动巡航</span>
+      {/* Bottom Controls - Responsive */}
+      <div className="absolute bottom-6 md:bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 md:gap-10 bg-white/5 backdrop-blur-2xl px-6 md:px-12 py-3 md:py-5 border border-white/10 rounded-full shadow-2xl z-[60] pointer-events-auto mb-[env(safe-area-inset-bottom)]">
+          <button onClick={() => setIsAutoRotating(!isAutoRotating)} className={`flex items-center gap-3 md:gap-4 transition-all ${isAutoRotating ? 'text-cyan-400' : 'text-white/20 hover:text-white'}`}>
+            <RotateCw size={14} className={`md:w-4 md:h-4 ${isAutoRotating ? 'animate-[spin_12s_linear_infinite]' : ''}`} />
+            <span className="text-[8px] md:text-[10px] font-black tracking-[0.2em] md:tracking-[0.3em] uppercase italic">自动巡航</span>
           </button>
-          <div className="w-px h-6 bg-white/10"></div>
-          <button onClick={() => handleSelect(null)} className={`flex items-center gap-4 transition-all ${!selectedName ? 'text-white' : 'text-white/20 hover:text-white'}`}>
-            <Move size={16} />
-            <span className="text-[10px] font-black tracking-[0.3em] uppercase italic">手动探索</span>
+          <div className="w-px h-4 md:h-6 bg-white/10"></div>
+          <button onClick={() => handleSelect(null)} className={`flex items-center gap-3 md:gap-4 transition-all ${!selectedName ? 'text-white' : 'text-white/20 hover:text-white'}`}>
+            <Move size={14} className="md:w-4 md:h-4" />
+            <span className="text-[8px] md:text-[10px] font-black tracking-[0.2em] md:tracking-[0.3em] uppercase italic">手动探索</span>
           </button>
       </div>
     </div>

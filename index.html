@@ -3,12 +3,18 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
     <title>知识通 - 赛博学习枢纽</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sar: env(safe-area-inset-right);
+        --sab: env(safe-area-inset-bottom);
+        --sal: env(safe-area-inset-left);
+      }
       body {
         font-family: 'Inter', sans-serif;
         background-color: #020617; /* Slate 950 */
@@ -17,16 +23,27 @@
           linear-gradient(rgba(16, 185, 129, 0.05) 1px, transparent 1px),
           linear-gradient(90deg, rgba(16, 185, 129, 0.05) 1px, transparent 1px);
         background-size: 40px 40px;
+        min-height: 100dvh;
+        -webkit-tap-highlight-color: transparent;
       }
       h1, h2, h3, .tech-font {
         font-family: 'Orbitron', sans-serif;
       }
       .clip-tech-border {
         clip-path: polygon(
-          20px 0, 100% 0, 
-          100% calc(100% - 20px), calc(100% - 20px) 100%, 
-          0 100%, 0 20px
+          15px 0, 100% 0, 
+          100% calc(100% - 15px), calc(100% - 15px) 100%, 
+          0 100%, 0 15px
         );
+      }
+      @media (min-width: 768px) {
+        .clip-tech-border {
+          clip-path: polygon(
+            20px 0, 100% 0, 
+            100% calc(100% - 20px), calc(100% - 20px) 100%, 
+            0 100%, 0 20px
+          );
+        }
       }
       .clip-button {
         clip-path: polygon(
@@ -41,6 +58,10 @@
       .no-scrollbar {
         -ms-overflow-style: none;
         scrollbar-width: none;
+      }
+      /* 针对 iOS 底部安全区域的填充 */
+      .pb-safe {
+        padding-bottom: var(--sab);
       }
     </style>
   <script type="importmap">
