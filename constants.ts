@@ -97,4 +97,23 @@ export const ENTERTAINMENT_ITEMS: AppItem[] = [
   }
 ];
 
-export const UTILITIES_ITEMS: AppItem[] = [];
+export const UTILITIES_ITEMS: AppItem[] = [
+  {
+    id: 'u1',
+    title: 'ProArt - 专业绘画',
+    author: '@CreativeMind',
+    category: 'utilities',
+    imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=800',
+    description: '专业级 Web 绘图引擎，支持图层管理、无限撤销与多种笔刷工具。',
+    tags: ['绘图', '图层', '工具']
+  },
+  {
+    id: 'u2',
+    title: 'LingoFlow - 单词流',
+    author: '@EdTechSpecialist',
+    category: 'utilities',
+    imageUrl: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=800',
+    description: '沉浸式词汇记忆系统，支持从小学到雅思多级难度，采用科学间隔复习算法。',
+    tags: ['英语', '词汇', '效率']
+  }
+];

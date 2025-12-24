@@ -16,6 +16,8 @@ import BrainTeaseApp from './components/BrainTeaseApp';
 import GobangApp from './components/GobangApp';
 import PixelArtApp from './components/PixelArtApp';
 import ChineseChessApp from './components/ChineseChessApp';
+import ProArtApp from './components/ProArtApp';
+import VocabularyApp from './components/VocabularyApp';
 import HeroSpotlight from './components/HeroSpotlight';
 import ActivityTicker from './components/ActivityTicker';
 import AuthUI from './components/AuthUI';
@@ -122,6 +124,8 @@ const App: React.FC = () => {
       case 'ent4': return <GobangApp onClose={() => setRunningAppId(null)} />;
       case 'ent5': return <ChineseChessApp onClose={() => setRunningAppId(null)} />;
       case 'ent1': return <PixelArtApp onClose={() => setRunningAppId(null)} />;
+      case 'u1': return <ProArtApp onClose={() => setRunningAppId(null)} />;
+      case 'u2': return <VocabularyApp onClose={() => setRunningAppId(null)} userEmail={user?.email} />;
       default: return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center">
           <Terminal className="w-16 h-16 text-emerald-500 mb-4 opacity-50" />

@@ -33,13 +33,24 @@ const PixelArtApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const history = useRef<ImageData[]>([]);
   const redoStack = useRef<ImageData[]>([]);
 
+  // Moved saveHistory before its usage and wrapped in useCallback
+  const saveHistory = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+    const snapshot = ctx.getImageData(0, 0, gridSize, gridSize);
+    history.current.push(snapshot);
+    if (history.current.length > 50) history.current.shift();
+    redoStack.current = []; 
+  }, [gridSize]);
+
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     ctx.clearRect(0, 0, gridSize, gridSize);
     saveHistory();
-  }, [gridSize]);
+  }, [gridSize, saveHistory]);
 
   useEffect(() => { initCanvas(); }, [initCanvas]);
 
@@ -57,16 +68,6 @@ const PixelArtApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       ctx.beginPath(); ctx.moveTo(0, i * cellSide); ctx.lineTo(canvas.width, i * cellSide); ctx.stroke();
     }
   }, [gridSize, showGrid]);
-
-  const saveHistory = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-    const snapshot = ctx.getImageData(0, 0, gridSize, gridSize);
-    history.current.push(snapshot);
-    if (history.current.length > 50) history.current.shift();
-    redoStack.current = []; 
-  };
 
   const undo = () => {
     if (history.current.length <= 1) return;
@@ -98,7 +99,7 @@ const PixelArtApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   const draw = (x: number, y: number) => {
     const canvas = canvasRef.current!;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     if (tool === 'pencil') { ctx.fillStyle = color; ctx.fillRect(x, y, 1, 1); }
     else if (tool === 'eraser') { ctx.clearRect(x, y, 1, 1); }
     else if (tool === 'picker') {
@@ -112,6 +113,7 @@ const PixelArtApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDrawing(true); const { x, y } = getMousePos(e); draw(x, y);
+    // Fix: Explicitly calling saveHistory with no arguments to match its definition
     if (tool === 'bucket' || tool === 'picker') { setIsDrawing(false); saveHistory(); }
   };
 
