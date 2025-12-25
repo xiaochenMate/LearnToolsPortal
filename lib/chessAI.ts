@@ -11,15 +11,14 @@ const PIECE_VAL: Record<string, number> = {
   soldier: 100
 };
 
-// 简单的位置权重 (简化版)
 const getPosValue = (piece: Piece, index: number): number => {
   const x = index % 9, y = Math.floor(index / 9);
   if (piece.type === 'soldier') {
     const crossed = piece.color === 'red' ? y <= 4 : y >= 5;
-    return crossed ? 50 : 0; // 卒过河加分
+    return crossed ? 50 : 0;
   }
   if (piece.type === 'horse' || piece.type === 'cannon') {
-    return (x >= 2 && x <= 6) ? 10 : 0; // 居中加分
+    return (x >= 2 && x <= 6) ? 10 : 0;
   }
   return 0;
 };
@@ -36,14 +35,24 @@ export function evaluate(board: ChessBoard, color: ChessColor): number {
   return score;
 }
 
+/**
+ * 极大极小值算法 + Alpha-Beta 剪枝
+ */
 export function getBestMove(board: ChessBoard, color: ChessColor, depth: number = 3): [number, number] {
   let bestScore = -Infinity;
   let move: [number, number] = [-1, -1];
 
   const moves = getAllLegalMoves(board, color);
+  
+  // 启发式排序：优先检查吃子操作
+  moves.sort((a, b) => {
+    const scoreA = board[a[1]] ? PIECE_VAL[board[a[1]]!.type] : 0;
+    const scoreB = board[b[1]] ? PIECE_VAL[board[b[1]]!.type] : 0;
+    return scoreB - scoreA;
+  });
+
   for (const [from, to] of moves) {
     const nextBoard = [...board];
-    const captured = nextBoard[to];
     nextBoard[to] = nextBoard[from];
     nextBoard[from] = null;
 
@@ -76,6 +85,7 @@ function minimax(board: ChessBoard, depth: number, color: ChessColor, alpha: num
     alpha = Math.max(alpha, score);
     if (alpha >= beta) break;
   }
+  
   return maxScore === -Infinity ? -PIECE_VAL.king : maxScore;
 }
 

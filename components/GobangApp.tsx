@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { X, RotateCcw, Undo2, Users, Cpu, Trophy, Sparkles, BrainCircuit, Activity, BarChart3, Settings2, Info } from 'lucide-react';
+import { X, RotateCcw, Undo2, Users, Cpu, Trophy, Sparkles, BrainCircuit, Activity, BarChart3, Settings2, Info, ChevronDown } from 'lucide-react';
 import { Player, Board, checkWin, getBestMove, getScoreMap } from '../lib/gobangAI';
 
 const BOARD_SIZE = 15;
@@ -19,6 +19,7 @@ const GobangApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [lastMove, setLastMove] = useState<[number, number] | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showMobileSettings, setShowMobileSettings] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContext = useRef<AudioContext | null>(null);
@@ -198,127 +199,141 @@ const GobangApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:40px_40px]"></div>
       </div>
 
-      <header className="h-20 bg-slate-900/90 backdrop-blur-xl border-b border-emerald-500/30 flex items-center justify-between px-8 z-20 shrink-0">
-        <div className="flex items-center gap-5">
-          <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)] animate-pulse">
-            <BrainCircuit className="text-white w-7 h-7" />
+      <header className="h-14 md:h-20 bg-slate-900/90 backdrop-blur-xl border-b border-emerald-500/30 flex items-center justify-between px-4 md:px-8 z-20 shrink-0">
+        <div className="flex items-center gap-3 md:gap-5">
+          <div className="w-8 h-8 md:w-12 md:h-12 bg-emerald-600 rounded-lg md:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0">
+            <BrainCircuit className="text-white w-5 h-5 md:w-7 md:h-7" />
           </div>
-          <div>
-            <h1 className="text-2xl font-black tech-font text-white flex items-center gap-3 italic">
-              ZST 五子棋 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/30 tech-font">神经元 V2</span>
+          <div className="truncate">
+            <h1 className="text-sm md:text-2xl font-black tech-font text-white italic tracking-tighter truncate">
+              ZST 五子棋 <span className="hidden xs:inline-block text-[8px] md:text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 tech-font">V2</span>
             </h1>
-            <div className="flex items-center gap-3 mt-1">
-               <span className="text-[9px] font-black text-emerald-500/70 uppercase tracking-[0.2em] flex items-center gap-1">
-                 <Activity size={10} /> 引擎: 稳定运行
-               </span>
-               <div className="w-1 h-1 rounded-full bg-slate-700"></div>
-               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest italic">{isAiThinking ? 'AI 计算中...' : '系统待命'}</p>
-            </div>
+            <p className="hidden xs:block text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 italic">{isAiThinking ? 'AI 计算中...' : '系统就绪'}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700">
-            <button onClick={() => {setGameMode('PvP'); resetGame();}} className={`px-4 py-2 rounded-xl text-[10px] font-black flex items-center gap-2 transition-all ${gameMode === 'PvP' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>
-              <Users size={14}/> 本地双人
+        <div className="flex items-center gap-2 md:gap-4 shrink-0">
+          <div className="hidden xs:flex bg-slate-800 p-1 rounded-lg md:rounded-2xl border border-slate-700">
+            <button onClick={() => {setGameMode('PvP'); resetGame();}} className={`px-2 md:px-4 py-1 rounded-md md:rounded-xl text-[9px] md:text-[10px] font-black flex items-center gap-2 transition-all ${gameMode === 'PvP' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+              PvP
             </button>
-            <button onClick={() => {setGameMode('PvE'); resetGame();}} className={`px-4 py-2 rounded-xl text-[10px] font-black flex items-center gap-2 transition-all ${gameMode === 'PvE' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>
-              <Cpu size={14}/> 人机对弈
+            <button onClick={() => {setGameMode('PvE'); resetGame();}} className={`px-2 md:px-4 py-1 rounded-md md:rounded-xl text-[9px] md:text-[10px] font-black flex items-center gap-2 transition-all ${gameMode === 'PvE' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+              PvE
             </button>
           </div>
-          <button onClick={onClose} className="p-3 bg-slate-800/50 hover:bg-red-500/20 border border-slate-700 hover:border-red-500/50 rounded-full transition-all text-slate-500 hover:text-red-500">
-            <X size={20}/>
+          <button onClick={() => setShowMobileSettings(!showMobileSettings)} className="lg:hidden p-2 text-emerald-500 bg-emerald-500/10 rounded-full">
+            <Settings2 size={18} />
+          </button>
+          <button onClick={onClose} className="p-2 md:p-3 bg-slate-800/50 hover:bg-red-500/20 border border-slate-700 hover:border-red-500/50 rounded-full transition-all text-slate-500 hover:text-red-500">
+            <X size={18}/>
           </button>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col lg:flex-row items-center justify-center p-6 gap-8 relative z-10 overflow-y-auto no-scrollbar">
-        <aside className="w-full lg:w-72 flex flex-col gap-4">
-           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-6 rounded-[2rem] shadow-2xl">
+      <main className="flex-1 flex flex-col lg:flex-row items-center justify-center p-3 md:p-6 lg:p-10 gap-4 md:gap-8 relative z-10 overflow-y-auto no-scrollbar pb-safe">
+        
+        {/* PC Sidebar / Mobile Drawer */}
+        <aside className={`${showMobileSettings ? 'fixed inset-x-0 bottom-0 z-50 translate-y-0' : 'hidden lg:flex lg:static translate-y-full lg:translate-y-0'} w-full lg:w-72 flex flex-col gap-4 transition-transform duration-300`}>
+           {showMobileSettings && <div className="fixed inset-0 bg-black/60 -z-10" onClick={() => setShowMobileSettings(false)} />}
+           <div className="bg-slate-900 border-t lg:border border-slate-800 p-6 rounded-t-[2rem] lg:rounded-[2rem] shadow-2xl">
+              <div className="lg:hidden flex justify-center mb-4">
+                 <div className="w-12 h-1 bg-slate-700 rounded-full" />
+              </div>
               <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                 <Settings2 size={16} /> 对弈配置
               </h3>
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 <div>
-                   <label className="text-[10px] text-slate-500 font-black uppercase mb-3 block">AI 难度等级</label>
+                   <label className="text-[9px] text-slate-500 font-black uppercase mb-3 block">模式与难度</label>
+                   <div className="flex lg:hidden gap-2 mb-3">
+                      <button onClick={() => {setGameMode('PvP'); resetGame();}} className={`flex-1 py-2 rounded-lg text-[10px] font-black border transition-all ${gameMode === 'PvP' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>双人模式</button>
+                      <button onClick={() => {setGameMode('PvE'); resetGame();}} className={`flex-1 py-2 rounded-lg text-[10px] font-black border transition-all ${gameMode === 'PvE' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>人机模式</button>
+                   </div>
                    <div className="grid grid-cols-1 gap-2">
                       {(['NOVICE', 'EXPERT', 'MASTER'] as Difficulty[]).map(d => (
-                        <button key={d} onClick={() => {setDifficulty(d); resetGame();}} className={`py-3 px-4 rounded-xl text-left text-[11px] font-black transition-all border ${difficulty === d ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'border-slate-800 text-slate-500 hover:border-slate-600'}`}>
-                           {d === 'NOVICE' ? '◇ 初学者 (入门)' : d === 'EXPERT' ? '◈ 专家 (进阶)' : '◆ 大师 (极限)'}
+                        <button key={d} onClick={() => {setDifficulty(d); resetGame();}} className={`py-2.5 md:py-3 px-4 rounded-xl text-left text-[10px] md:text-[11px] font-black transition-all border ${difficulty === d ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'border-slate-800 text-slate-500 hover:border-slate-600'}`}>
+                           {d === 'NOVICE' ? '◇ 入门' : d === 'EXPERT' ? '◈ 专家' : '◆ 大师'}
                         </button>
                       ))}
                    </div>
                 </div>
                 <div className="pt-4 border-t border-slate-800">
-                   <button onClick={() => setShowAnalysis(!showAnalysis)} className={`w-full py-4 px-5 rounded-2xl flex items-center justify-between transition-all border ${showAnalysis ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'}`}>
+                   <button onClick={() => setShowAnalysis(!showAnalysis)} className={`w-full py-3.5 md:py-4 px-5 rounded-2xl flex items-center justify-between transition-all border ${showAnalysis ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
                       <div className="flex items-center gap-3">
-                         <BrainCircuit size={18}/>
-                         <span className="text-[11px] font-black uppercase">神经分析热力图</span>
+                         <BrainCircuit size={16}/>
+                         <span className="text-[10px] font-black uppercase">神经分析</span>
                       </div>
-                      <div className={`w-8 h-4 rounded-full relative transition-colors ${showAnalysis ? 'bg-white/30' : 'bg-slate-700'}`}>
+                      <div className={`w-8 h-4 rounded-full relative ${showAnalysis ? 'bg-white/30' : 'bg-slate-700'}`}>
                          <div className={`absolute top-1 w-2 h-2 rounded-full transition-all ${showAnalysis ? 'right-1 bg-white' : 'left-1 bg-slate-500'}`}></div>
                       </div>
                    </button>
-                   <p className="mt-3 text-[9px] text-slate-500 italic leading-relaxed font-medium">
-                     * 开启后将实时显示落子点的战略评估，辅助战术学习。
-                   </p>
                 </div>
               </div>
+              {showMobileSettings && (
+                 <button onClick={() => setShowMobileSettings(false)} className="mt-6 w-full py-3 bg-slate-800 text-slate-400 font-bold text-xs rounded-xl">关闭面板</button>
+              )}
            </div>
         </aside>
 
-        <div className="flex flex-col items-center">
-          <div className="mb-6 flex items-center gap-12">
-            <div className={`flex items-center gap-4 transition-all duration-500 ${currentPlayer === 1 ? 'scale-110' : 'opacity-30 blur-[1px]'}`}>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-black shadow-2xl border border-white/10" />
+        <div className="flex-1 flex flex-col items-center w-full max-w-2xl">
+          {/* Status HUD - Mobile Optimized */}
+          <div className="mb-4 md:mb-6 flex items-center justify-between w-full px-2">
+            <div className={`flex items-center gap-3 transition-all duration-500 ${currentPlayer === 1 ? 'scale-105' : 'opacity-30'}`}>
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-slate-700 to-black border border-white/10" />
               <div className="flex flex-col">
-                 <span className="text-[10px] font-black text-slate-500 uppercase">黑方</span>
-                 <span className="text-white font-black tech-font">玩家 01</span>
+                 <span className="text-[8px] font-black text-slate-500 uppercase">BLACK</span>
+                 <span className="text-white text-xs font-black tech-font">PLAYER_01</span>
               </div>
             </div>
-            <div className="w-px h-8 bg-slate-800" />
-            <div className={`flex items-center gap-4 transition-all duration-500 ${currentPlayer === 2 ? 'scale-110' : 'opacity-30 blur-[1px]'}`}>
+            
+            <div className="flex flex-col items-center">
+               <div className="text-[10px] text-emerald-500/40 font-mono tracking-[0.3em] hidden sm:block">VS</div>
+               <div className="flex gap-1">
+                  {history.length > 0 && <span className="text-[9px] font-mono text-slate-600">STEPS: {history.length}</span>}
+               </div>
+            </div>
+
+            <div className={`flex items-center gap-3 transition-all duration-500 ${currentPlayer === 2 ? 'scale-105' : 'opacity-30'}`}>
               <div className="flex flex-col items-end">
-                 <span className="text-[10px] font-black text-slate-500 uppercase">{gameMode === 'PvE' ? '引擎' : '白方'}</span>
-                 <span className="text-white font-black tech-font uppercase">{gameMode === 'PvE' ? '神经元 AI' : '玩家 02'}</span>
+                 <span className="text-[8px] font-black text-slate-500 uppercase">{gameMode === 'PvE' ? 'ENGINE' : 'WHITE'}</span>
+                 <span className="text-white text-xs font-black tech-font uppercase">{gameMode === 'PvE' ? 'AI_NEURON' : 'PLAYER_02'}</span>
               </div>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-white to-slate-300 shadow-2xl border border-black/10" />
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-white to-slate-300 border border-black/10" />
             </div>
           </div>
 
-          <div className="relative group p-3 bg-slate-800/30 rounded-[2.5rem] border border-slate-700/50 backdrop-blur-sm shadow-2xl">
-            <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} onClick={handleCanvasClick} className="relative bg-white border border-slate-900 rounded-[2rem] shadow-2xl max-w-full h-auto aspect-square cursor-crosshair transition-transform active:scale-[0.995]" />
-            {winner && (
-              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md rounded-[2rem] flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500 z-30">
-                <div className="relative mb-6">
-                   <div className="absolute -inset-8 bg-emerald-500/20 rounded-full blur-2xl animate-pulse"></div>
-                   <Trophy size={120} className="text-emerald-400 relative animate-bounce" />
+          <div className="relative w-full max-w-[min(100%,460px)] group p-2 md:p-3 bg-slate-800/40 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-700/50 backdrop-blur-sm shadow-2xl">
+            <div className="relative w-full aspect-square bg-white border border-slate-900 rounded-xl md:rounded-[2rem] overflow-hidden">
+               <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} onClick={handleCanvasClick} className="w-full h-full cursor-crosshair transition-transform active:scale-[0.995]" />
+               {winner && (
+                <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500 z-30 p-6 text-center">
+                  <Trophy size={80} className="text-emerald-400 mb-4 animate-bounce" />
+                  <h2 className="text-3xl md:text-5xl font-black text-white italic tech-font mb-2 uppercase tracking-tighter">
+                    {winner === 'Draw' ? 'DRAW_GAME' : 'VICTORY'}
+                  </h2>
+                  <p className="text-emerald-500 font-bold uppercase tracking-[0.2em] mb-10 text-[10px] md:text-sm">博弈序列已完成</p>
+                  <button onClick={resetGame} className="w-full max-w-xs py-4 bg-emerald-600 text-white font-black text-sm md:text-xl rounded-2xl hover:bg-emerald-500 transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] active:scale-95 tech-font">
+                    NEW_SESSION
+                  </button>
                 </div>
-                <h2 className="text-5xl font-black text-white italic tech-font mb-2 uppercase tracking-tighter">
-                  {winner === 'Draw' ? '平局' : (winner === 1 ? '黑方获胜' : '白方获胜')}
-                </h2>
-                <p className="text-emerald-500 font-bold uppercase tracking-[0.4em] mb-12 text-sm">博弈序列已完成</p>
-                <button onClick={resetGame} className="px-16 py-5 bg-emerald-600 text-white font-black text-xl rounded-2xl hover:bg-emerald-500 transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] active:scale-95 tech-font uppercase italic tracking-widest">
-                  开启新对弈
-                </button>
-              </div>
-            )}
+               )}
+            </div>
           </div>
 
-          <div className="mt-8 flex items-center gap-4">
-             <button onClick={undoMove} className="flex items-center gap-3 px-8 py-4 bg-slate-900 border border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 rounded-2xl transition-all shadow-xl group">
-                <Undo2 size={18} className="group-hover:-translate-x-1 transition-transform" />
-                <span className="text-[11px] font-black uppercase tracking-widest">悔棋</span>
+          <div className="mt-6 md:mt-8 flex items-center gap-3 w-full max-w-[460px]">
+             <button onClick={undoMove} className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-900 border border-slate-800 text-slate-400 rounded-xl transition-all group active:scale-95">
+                <Undo2 size={16} />
+                <span className="text-[10px] font-black uppercase tracking-widest">悔棋</span>
              </button>
-             <button onClick={resetGame} className="flex items-center gap-3 px-8 py-4 bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-500 hover:border-rose-500/50 rounded-2xl transition-all shadow-xl group">
-                <RotateCcw size={18} className="group-hover:rotate-180 transition-transform duration-500" />
-                <span className="text-[11px] font-black uppercase tracking-widest">重置棋盘</span>
+             <button onClick={resetGame} className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-900 border border-slate-800 text-slate-400 rounded-xl transition-all group active:scale-95">
+                <RotateCcw size={16} />
+                <span className="text-[10px] font-black uppercase tracking-widest">重置</span>
              </button>
           </div>
         </div>
 
-        <aside className="w-full lg:w-72 flex flex-col gap-4">
-           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-6 rounded-[2rem] shadow-2xl">
+        <aside className="hidden xl:flex w-72 flex-col gap-4">
+           <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-[2rem] shadow-2xl">
               <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                 <BarChart3 size={16} /> 实时遥测
               </h3>
@@ -327,36 +342,23 @@ const GobangApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     <span className="text-[10px] text-slate-500 font-black uppercase">总手数</span>
                     <span className="text-white font-mono font-black">{history.length}</span>
                  </div>
-                 <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700 flex justify-between items-center">
-                    <span className="text-[10px] text-slate-500 font-black uppercase">胜算估值</span>
-                    <span className="text-emerald-500 font-mono font-black">运行中...</span>
-                 </div>
                  <div className="bg-blue-500/5 border border-blue-500/20 p-4 rounded-2xl">
-                    <div className="flex items-center gap-2 mb-2">
-                       <Info size={12} className="text-blue-400" />
-                       <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">战略手册</span>
-                    </div>
-                    <p className="text-[9px] text-slate-400 italic leading-relaxed font-medium">
-                      五子棋讲究攻守平衡。在发起致命攻势前，请务必监测对手的潜在连五威胁。
-                    </p>
+                    <p className="text-[9px] text-slate-400 italic leading-relaxed font-medium">五子棋讲究攻守平衡。在发起致命攻势前，请务必监测对手的潜在连五威胁。</p>
                  </div>
               </div>
            </div>
         </aside>
       </main>
 
-      <footer className="h-10 bg-slate-950 border-t border-slate-900 px-8 flex items-center justify-between z-20">
-        <div className="flex gap-10">
-          <span className="text-[9px] font-mono text-emerald-500/50 flex items-center gap-2 italic tracking-[0.2em]">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-            神经核心: 活动中
-          </span>
-          <span className="text-[9px] font-mono text-slate-700 uppercase tracking-widest italic">
-            Alpha-Beta 剪枝: 已启用
+      <footer className="h-8 md:h-10 bg-slate-950 border-t border-slate-900 px-4 md:px-8 flex items-center justify-between z-20 shrink-0">
+        <div className="flex gap-4 md:gap-10">
+          <span className="text-[7px] md:text-[9px] font-mono text-emerald-500/50 flex items-center gap-1 md:gap-2 italic tracking-[0.1em]">
+            <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
+            NEURAL_CORE: ACTIVE
           </span>
         </div>
-        <div className="text-[9px] font-mono text-slate-700 uppercase tracking-[0.4em] flex items-center gap-3 italic">
-          <Sparkles size={10} /> 难度系数: {difficulty}
+        <div className="text-[7px] md:text-[9px] font-mono text-slate-700 uppercase tracking-widest flex items-center gap-2">
+          {difficulty}_MODE / SYNCED
         </div>
       </footer>
     </div>
